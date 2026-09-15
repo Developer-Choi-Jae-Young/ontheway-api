@@ -1,0 +1,18 @@
+name: "📝 Docs"
+description: 문서 수정
+title: "[Docs] "
+labels: ["docs"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: 🛩️ Description
+      placeholder: ex) README에 로컬 실행 방법 추가
+    validations:
+      required: true
+  - type: textarea
+    id: todos
+    attributes:
+      label: ☑️ Todos
+      value: |
+        - [ ]

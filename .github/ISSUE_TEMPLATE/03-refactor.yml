@@ -1,0 +1,18 @@
+name: "♻️ Refactor"
+description: 코드 리팩토링 (동작 변화 없음)
+title: "[Refactor] "
+labels: ["refactor"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: 🛩️ Description
+      placeholder: ex) 중복된 예외 처리 로직 통합
+    validations:
+      required: true
+  - type: textarea
+    id: todos
+    attributes:
+      label: ☑️ Todos
+      value: |
+        - [ ]
