@@ -1,0 +1,46 @@
+name: PR Type Labeler
+
+# 포크에서 올라온 PR에도 라벨을 달 수 있도록 pull_request_target을 사용합니다.
+# PR 코드를 checkout/실행하지 않고 본문만 읽기 때문에 안전합니다.
+on:
+  pull_request_target:
+    types: [opened, edited, reopened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: pr-type-labeler-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: PR 본문의 타입 체크박스에 맞춰 라벨 동기화
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const TYPES = ['feat', 'fix', 'refactor', 'docs', 'chore', 'style'];
+            const pr = context.payload.pull_request;
+
+            const body = (pr.body || '').replace(/<!--[\s\S]*?-->/g, '');
+            const pattern = new RegExp(String.raw`^\s*[-*]\s*\[[xX]\]\s*(${TYPES.join('|')})\b`, 'gim');
+            const selected = new Set([...body.matchAll(pattern)].map((m) => m[1].toLowerCase()));
+
+            const current = pr.labels.map((label) => label.name);
+            const toAdd = [...selected].filter((name) => !current.includes(name));
+            const toRemove = current.filter((name) => TYPES.includes(name) && !selected.has(name));
+
+            for (const name of toRemove) {
+              await github.rest.issues.removeLabel({ ...context.repo, issue_number: pr.number, name });
+            }
+            if (toAdd.length > 0) {
+              await github.rest.issues.addLabels({ ...context.repo, issue_number: pr.number, labels: toAdd });
+            }
+
+            if (selected.size === 0) {
+              core.warning('PR 타입이 선택되지 않았습니다. PR 본문에서 타입을 체크해주세요.');
+            }
+            core.info(`selected: [${[...selected]}], added: [${toAdd}], removed: [${toRemove}]`);

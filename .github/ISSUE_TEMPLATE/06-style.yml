@@ -1,0 +1,18 @@
+name: "🎨 Style"
+description: 코드 포맷팅, 네이밍 등 스타일 변경 (동작 변화 없음)
+title: "[Style] "
+labels: ["style"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: 🛩️ Description
+      placeholder: ex) import 순서 및 들여쓰기 정리
+    validations:
+      required: true
+  - type: textarea
+    id: todos
+    attributes:
+      label: ☑️ Todos
+      value: |
+        - [ ]

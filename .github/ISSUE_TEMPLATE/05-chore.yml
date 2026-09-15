@@ -1,0 +1,18 @@
+name: "🔧 Chore"
+description: 빌드, 설정, 의존성, 인프라 등 기타 작업
+title: "[Chore] "
+labels: ["chore"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: 🛩️ Description
+      placeholder: ex) Spring Boot 버전 업그레이드
+    validations:
+      required: true
+  - type: textarea
+    id: todos
+    attributes:
+      label: ☑️ Todos
+      value: |
+        - [ ]

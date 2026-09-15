@@ -1,0 +1,41 @@
+name: Sync Labels
+
+# 이슈 템플릿은 저장소에 이미 존재하는 라벨만 붙일 수 있으므로, 타입 라벨을 미리 생성/갱신합니다.
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/sync-labels.yml
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 타입 라벨 생성/갱신
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const LABELS = [
+              { name: 'feat', color: '0E8A16', description: '새로운 기능 추가' },
+              { name: 'fix', color: 'D73A4A', description: '버그 수정' },
+              { name: 'refactor', color: 'FBCA04', description: '코드 리팩토링 (동작 변화 없음)' },
+              { name: 'docs', color: '0075CA', description: '문서 수정' },
+              { name: 'chore', color: 'C5DEF5', description: '빌드, 설정, 의존성, 인프라 등 기타 작업' },
+              { name: 'style', color: 'D4C5F9', description: '코드 포맷팅, 네이밍 등 스타일 변경 (동작 변화 없음)' },
+            ];
+
+            for (const label of LABELS) {
+              try {
+                await github.rest.issues.getLabel({ ...context.repo, name: label.name });
+                await github.rest.issues.updateLabel({ ...context.repo, ...label });
+                core.info(`updated: ${label.name}`);
+              } catch (error) {
+                if (error.status !== 404) throw error;
+                await github.rest.issues.createLabel({ ...context.repo, ...label });
+                core.info(`created: ${label.name}`);
+              }
+            }
