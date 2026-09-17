@@ -26,20 +26,18 @@ import java.time.LocalTime;
 /**
  * 전달자 이동 경로 게시글.
  *
- * <p><b>상태 컬럼을 두지 않는다.</b> 2.1·2.4 의 "게시 상태"는 전부 유도된다 —
- * 공개 종료는 DeliveryOrder 존재, "시작시간 지난 글 제외"는 날짜 비교,
- * "요청 들어오면 수정 불가"는 Request 존재로 판정한다 (ERD_REVIEW 1-1).
+ * 상태 컬럼이 없다. 공개가 끝났는지는 DeliveryOrder 가 있는지로, 출발 시각이 지났는지는
+ * 날짜 비교로, 수정할 수 있는지는 Request 가 있는지로 그때그때 판단한다.
  *
- * <p>배송 날짜와 시간이 분리돼 있어 시간 쪽은 {@code LocalTime} 이다. 물품 게시글과 다른 이유는
- * 1-9 (3) 참조.
+ * 날짜와 시간을 따로 받으므로 시간 쪽은 {@code LocalTime} 이다.
  */
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "delivery", indexes = {
-        // 2.2 목록 정렬 + 필터
+        // 경로 목록의 정렬과 필터
         @Index(name = "idx_delivery_feed", columnList = "delivery_date, id"),
-        // 2.1 최근 게시물 불러오기 / 6.1 내 게시글 / 7 전달내역
+        // 최근 게시물 불러오기, 내 게시글 목록, 이용내역의 진입점
         @Index(name = "idx_delivery_author", columnList = "author_id, deleted_at, id")
 })
 public class Delivery extends BaseTimeEntity {
@@ -48,7 +46,7 @@ public class Delivery extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** 전달자. Request 에 복사해 두지 않고 여기서 조인으로 얻는다 (1-6). */
+    /** 전달자. 요청의 전달자도 이 값을 가져다 쓴다. */
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "author_id", nullable = false,
             foreignKey = @ForeignKey(name = "FK_delivery_author"))
@@ -79,7 +77,7 @@ public class Delivery extends BaseTimeEntity {
     @Column(nullable = false)
     private LocalTime plannedEndTime;
 
-    /** 2.2 / 6.1 희망금액 필터의 기준값. 필터는 상한 하나라 {@code desiredPrice <= 입력값} 이다. */
+    /** 전달자가 받고 싶은 금액. 목록 필터는 이 값이 입력값 이하인 경로만 남긴다. */
     @Column(nullable = false)
     private Integer desiredPrice;
 
@@ -89,8 +87,10 @@ public class Delivery extends BaseTimeEntity {
     private LocalDateTime deletedAt;
 
     /**
-     * 등록·수정에서 함께 쓰는 본문. 같은 타입의 값이 여러 개라({@code Location} 2개,
-     * {@code LocalTime} 2개) 위치 인자로 넘기면 출발지·도착지가 뒤바뀌어도 컴파일이 통과한다.
+     * 등록과 수정이 함께 쓰는 본문.
+     *
+     * 같은 타입이 두 개씩 있어서({@code Location}, {@code LocalTime}) 위치 인자로 받으면
+     * 출발지와 도착지를 바꿔 넘겨도 컴파일이 통과한다. 이름을 붙여 받으려고 record 로 묶었다.
      */
     @Builder
     public record Content(
@@ -105,7 +105,7 @@ public class Delivery extends BaseTimeEntity {
         apply(content);
     }
 
-    /** 2.4 수정. 가능 여부(= Request 미존재) 판정은 서비스가 한다. */
+    /** 수정. 수정할 수 있는 상태인지는 서비스가 먼저 확인한다. */
     public void update(Content content) {
         apply(content);
     }
@@ -120,7 +120,7 @@ public class Delivery extends BaseTimeEntity {
         this.additionalInfo = content.additionalInfo();
     }
 
-    /** 2.5 삭제. 이용내역에서 계속 참조되므로 소프트 삭제다. */
+    /** 삭제. 이용내역이 계속 참조하므로 소프트 삭제다. */
     public void delete(LocalDateTime now) {
         this.deletedAt = now;
     }

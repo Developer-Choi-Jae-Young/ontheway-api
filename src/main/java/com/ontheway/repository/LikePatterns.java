@@ -1,22 +1,22 @@
 package com.ontheway.repository;
 
 /**
- * {@code like} 패턴 만들기. 사용자가 입력한 {@code %} {@code _} 는 와일드카드가 아니라
- * 문자 그대로 취급한다 — 이스케이프하지 않으면 {@code "%"} 한 글자로 전체 조회가 된다.
+ * {@code like} 패턴을 만든다. 사용자가 친 {@code %} 와 {@code _} 는 와일드카드가 아니라
+ * 그냥 글자로 취급한다. 이스케이프를 안 하면 {@code "%"} 한 글자로 전체 조회가 된다.
  *
- * <p>쿼리 쪽에는 {@code like :param escape '!'} 를 반드시 같이 써야 한다.
+ * 주의: 쿼리 쪽에 {@code escape '!'} 를 같이 써야 패턴이 제대로 먹는다.
  */
 final class LikePatterns {
 
     /** JPQL 의 {@code escape} 절에 들어가는 문자. */
     static final char ESCAPE = '!';
 
-    /** 접두 일치. 주소 검색처럼 앞에서부터 맞추는 필터에 쓴다. */
+    /** 앞에서부터 맞추는 패턴. 주소 검색에 쓴다. */
     static String startsWith(String raw) {
         return raw == null ? null : escape(raw) + "%";
     }
 
-    /** 부분 일치. 물품명처럼 중간이 걸려도 찾아야 하는 필터에 쓴다. */
+    /** 중간이 걸려도 잡는 패턴. 물품명 검색에 쓴다. */
     static String contains(String raw) {
         return raw == null || raw.isBlank() ? null : "%" + escape(raw) + "%";
     }

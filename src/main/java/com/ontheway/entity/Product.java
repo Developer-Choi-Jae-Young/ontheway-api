@@ -28,20 +28,18 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * 의뢰 물품 게시글. 경로에 종속되지 않는 독립 엔티티로, 여러 경로에 반복 등록할 수 있다.
+ * 의뢰 물품 게시글.
  *
- * <p><b>상태 컬럼을 두지 않는다.</b> 물품 1건이 여러 경로에 걸려 있을 수 있어 물품 자체에
- * 상태를 두면 표현이 불가능하다. "이미 거래에 쓰였는가"는 DeliveryOrder 존재 여부로 유도한다
- * (ERD_REVIEW 1-1).
+ * 경로와 독립적이라 같은 물품을 여러 경로에 동시에 걸어둘 수 있다. 그래서 물품에는 상태
+ * 컬럼이 없고, 이미 수락된 거래에 들어갔는지는 DeliveryOrder 가 있는지로 판단한다.
  *
- * <p>수령·도착 시각이 {@code LocalDateTime} 인 이유: 물품 게시글은 경로가 정해지기 전에
- * 작성되므로 상속받을 날짜가 없다. 시각만 두면 "9/20 15시까지"를 표현할 수 없다 (1-9).
+ * 수령/도착 시각은 날짜까지 받는다. 경로가 정해지기 전에 작성돼 기준 날짜가 없다.
  */
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "product", indexes =
-        // 6.2 내 게시글 - 의뢰 탭 / 7 의뢰내역의 진입점 (1-6)
+        // 내 의뢰 목록, 이용내역의 진입점
         @Index(name = "idx_product_author", columnList = "author_id, deleted_at, id"))
 public class Product extends BaseTimeEntity {
 
@@ -49,7 +47,7 @@ public class Product extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** 의뢰자. Request 에 복사해 두지 않고 여기서 조인으로 얻는다 (1-6). */
+    /** 의뢰자. 요청의 의뢰자도 이 값을 가져다 쓴다. */
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "author_id", nullable = false,
             foreignKey = @ForeignKey(name = "FK_product_author"))
@@ -88,26 +86,21 @@ public class Product extends BaseTimeEntity {
     @Column(nullable = false, length = 20)
     private PaymentType paymentType;
 
-    /**
-     * 거래 금액의 원본. 수락되면 물품 수정이 막히고(2.9) 그 물품은 재사용되지 않으므로
-     * 값이 영구히 불변이다 — DeliveryOrder 에 스냅샷을 두지 않는다 (1-1).
-     */
+    /** 거래 금액. 수락되면 물품 수정이 막히므로 이후로는 바뀌지 않는다. */
     @Column(nullable = false)
     private Integer deliveryFee;
 
-    /**
-     * 2.6 허용물품·책임 동의 시각. 동의해야만 등록되므로 <b>동의 여부 불리언은 두지 않는다</b> —
-     * {@code NOT NULL} 인 채로 항상 {@code true} 인 컬럼이 되기 때문이다. {@code User} 의
-     * 약관 동의와 같은 판단이다 (ERD_REVIEW 1-11).
-     */
+    /** 허용물품/책임 동의 시각. 동의해야만 등록되므로 동의 여부는 따로 담지 않는다. */
     @Column(nullable = false)
     private LocalDateTime termsAgreedAt;
 
     private LocalDateTime deletedAt;
 
     /**
-     * 등록·수정에서 함께 쓰는 본문. 같은 타입의 값이 여러 개라({@code Location} 2개,
-     * {@code LocalDateTime} 2개) 위치 인자로 넘기면 뒤바꿔도 컴파일이 통과한다.
+     * 등록과 수정이 함께 쓰는 본문.
+     *
+     * 같은 타입이 두 개씩 있어서({@code Location}, {@code LocalDateTime}) 위치 인자로 받으면
+     * 순서를 바꿔 넘겨도 컴파일이 통과한다. 이름을 붙여 받으려고 record 로 묶었다.
      */
     @Builder
     public record Content(
@@ -124,7 +117,7 @@ public class Product extends BaseTimeEntity {
         apply(content);
     }
 
-    /** 2.9 수정. 가능 여부(= DeliveryOrder 미존재) 판정은 서비스가 한다 (ERD_REVIEW 2-7). */
+    /** 수정. 수정할 수 있는 상태인지는 서비스가 먼저 확인한다. */
     public void update(Content content) {
         apply(content);
     }
@@ -140,7 +133,7 @@ public class Product extends BaseTimeEntity {
         this.deliveryFee = content.deliveryFee();
     }
 
-    /** 2.10 삭제. 이용내역에서 계속 참조되므로 소프트 삭제다. */
+    /** 삭제. 이용내역이 계속 참조하므로 소프트 삭제다. */
     public void delete(LocalDateTime now) {
         this.deletedAt = now;
     }

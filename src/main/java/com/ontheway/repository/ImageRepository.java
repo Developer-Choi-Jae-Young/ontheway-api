@@ -8,8 +8,8 @@ import java.util.Optional;
 /**
  * 배송완료 증빙 사진. 테이블은 {@code file}, 엔티티는 {@code Image} 다.
  *
- * <p>{@code existsByOrderId} 는 <b>COMPLETION_REQUESTED 전이의 전제 조건</b>을 확인하는 데 쓴다.
- * 사진이 없으면 전이를 막는 판정 자체는 서비스가 한다 (2-7).
+ * {@code existsByOrderId} 는 확인요청으로 넘어가도 되는지 볼 때 쓴다. 사진이 없을 때 막는 건
+ * 서비스가 한다.
  */
 public interface ImageRepository extends JpaRepository<Image, Long> {
 

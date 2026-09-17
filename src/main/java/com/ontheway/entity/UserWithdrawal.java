@@ -17,14 +17,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 탈퇴 사유. 명세 5.6 이 "드롭다운 체크박스로 탈퇴 사유를 표시하여 제출한다"라
- * 복수 선택일 수 있어 컬럼이 아닌 행으로 둔다 (ERD_REVIEW 1-11).
+ * 탈퇴 사유. 체크박스로 받아 여러 개일 수 있어서 컬럼이 아니라 행으로 쌓는다.
+ * {@code unique(user, reason)} 은 같은 사유를 두 번 고르는 것만 막는다.
  *
- * <p>{@code unique(user, reason)} 은 같은 사유를 두 번 고르는 것만 막는다. 단일 선택이면
- * 사용자당 1행, 복수 선택이면 N행이 되므로 양쪽 다 이 스키마로 커버된다.
- *
- * <p>사유 목록이 명세에 없어 아직 enum 으로 만들지 않았다. 확정되면 {@code String} 을
- * enum + {@code @Enumerated(STRING)} 으로 바꾸면 되고 컬럼 타입은 그대로다.
+ * 사유 목록이 아직 안 정해져서 {@code String} 이다. 정해지면 enum 으로 바꾸면 되고
+ * 컬럼 타입은 그대로다.
  */
 @Getter
 @Entity

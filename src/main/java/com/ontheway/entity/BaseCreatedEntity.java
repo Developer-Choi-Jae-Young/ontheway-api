@@ -12,8 +12,8 @@ import java.time.LocalDateTime;
 /**
  * 생성 시각만 갖는 엔티티의 공통 상위 타입.
  *
- * <p>기록성 테이블(Image, FailedAndCancelled, Report, UserWithdrawal)은 수정되지 않으므로
- * updatedAt 을 두지 않는다. 수정이 있는 엔티티는 {@link BaseTimeEntity} 를 상속한다.
+ * 기록성 테이블(Image, FailedAndCancelled, Report, UserWithdrawal)은 수정되지 않아
+ * updatedAt 이 필요 없다. 수정이 있는 엔티티는 {@link BaseTimeEntity} 를 상속한다.
  */
 @Getter
 @MappedSuperclass

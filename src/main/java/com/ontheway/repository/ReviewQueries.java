@@ -1,21 +1,21 @@
 package com.ontheway.repository;
 
 /**
- * 후기의 <b>피평가자</b>를 유도하는 규칙. {@code Review} 에 피평가자 컬럼이 없어서(1-5)
- * 거래를 타고 올라가 계산해야 하는데, 그 계산이 흩어지면 2.2 목록에 뜨는 만족도와
- * 5.1 프로필 만족도가 서로 다른 값이 된다. 규칙은 이 파일에만 둔다.
+ * 후기에서 평가 대상을 찾아내는 JPQL 조각들. Review 에 대상 컬럼이 없어서 거래를 타고
+ * 올라가 계산해야 하고, 그 계산이 흩어지면 경로 목록의 만족도와 프로필의 만족도가 서로 다른
+ * 값이 된다. 그래서 여기 모아뒀다.
  *
- * <p>별칭에 {@code rv} 접두사를 붙인 이유는 이 조각이 <b>바깥 쿼리 안에 끼워지기</b> 때문이다.
- * 2.2 목록은 {@code Delivery d} 를 쓰고 있어서 접두사가 없으면 {@code d} 가 겹친다.
+ * 별칭에 {@code rv} 를 붙인 건 이 조각들이 바깥 쿼리 안에 끼워지기 때문이다. 경로 목록이
+ * {@code Delivery d} 를 쓰고 있어서 접두사가 없으면 {@code d} 가 겹친다.
  *
- * <p><b>{@link #RECEIVED_BY_USER} 와 {@link #AVG_RATING_OF_ROUTE_AUTHOR} 는 같은 규칙의
- * 두 표현이다. 하나를 고치면 반드시 다른 하나도 고친다.</b> 한 문자열로 합칠 수 없는 이유는
- * {@code @Query} 의 값이 컴파일 상수여야 해서 런타임 조립이 안 되는데, 목록 쪽은 피평가자를
- * 파라미터가 아니라 <b>바깥 별칭에 상관(correlate)</b>시켜야 하기 때문이다.
+ * 주의: {@link #RECEIVED_BY_USER} 와 {@link #AVG_RATING_OF_ROUTE_AUTHOR} 는 같은 규칙을 두 번
+ * 쓴 것이다. 하나를 고치면 다른 하나도 같이 고쳐야 한다. 합치지 못하는 건 {@code @Query} 값이
+ * 컴파일 상수여야 해서 런타임 조립이 안 되는데, 목록 쪽은 대상을 파라미터가 아니라 바깥
+ * 별칭에 걸어야 하기 때문이다.
  */
 final class ReviewQueries {
 
-    /** 후기 → 거래 → 게시글. 집계·서브쿼리용(페치 없음). */
+    /** 후기에서 거래를 거쳐 게시글까지. 집계와 서브쿼리에 쓰고 페치는 하지 않는다. */
     static final String TARGET_JOINS = """
               join rv.order rvo
               join rvo.request rvrq
@@ -23,7 +23,7 @@ final class ReviewQueries {
               join rvrq.delivery rvd
             """;
 
-    /** 목록용. 당사자 2인까지 함께 올려 {@code getTarget()} 이 추가 SELECT 없이 돌게 한다. */
+    /** 목록용. 당사자 둘까지 같이 올려서 {@code getTarget()} 이 SELECT 없이 돌게 한다. */
     static final String TARGET_JOINS_FETCH = """
               join fetch rv.order rvo
               join fetch rvo.request rvrq
@@ -34,10 +34,9 @@ final class ReviewQueries {
             """;
 
     /**
-     * 피평가자가 {@code :userId} 인 후기를 고르는 술어.
-     * 거래 당사자 2인 중 작성자가 아닌 쪽이 피평가자이므로, 당사자이면서 본인이 쓴 건 아닌 후기다.
+     * {@code :userId} 가 평가받은 후기를 고르는 조건. 당사자이면서 본인이 쓰지는 않은 후기다.
      *
-     * <p>{@link #TARGET_JOINS} 또는 {@link #TARGET_JOINS_FETCH} 와 함께 써야 한다.
+     * {@link #TARGET_JOINS} 나 {@link #TARGET_JOINS_FETCH} 와 같이 써야 한다.
      */
     static final String RECEIVED_BY_USER = """
             (rvp.author.id = :userId or rvd.author.id = :userId)
@@ -45,11 +44,11 @@ final class ReviewQueries {
             """;
 
     /**
-     * 피평가자가 <b>바깥 쿼리의 {@code d.author}</b> 인 후기들의 평균 평점. 2.2 목록의
-     * 만족도 하한 필터가 쓴다. 바깥에 {@code Delivery d} 별칭이 있어야 성립한다.
+     * 바깥 쿼리의 {@code d.author} 가 받은 후기들의 평균 평점. 경로 목록의 만족도 필터가 쓴다.
+     * 바깥에 {@code Delivery d} 별칭이 있어야 돌아간다.
      *
-     * <p>후기가 한 건도 없으면 {@code null} 이라 어떤 하한과 비교해도 거짓이다 —
-     * <b>신규 전달자는 만족도 필터를 켜는 순간 목록에서 빠진다.</b>
+     * 주의: 후기가 한 건도 없으면 {@code null} 이라 어떤 값과 비교해도 거짓이다. 후기가 없는
+     * 전달자는 만족도 필터를 켜는 순간 목록에서 사라진다.
      */
     static final String AVG_RATING_OF_ROUTE_AUTHOR = """
             (select avg(rv.rating) from Review rv

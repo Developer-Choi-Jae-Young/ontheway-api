@@ -23,28 +23,25 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 
 /**
- * 후기·만족도. 배송완료 건에만 작성할 수 있다 — 취소·실패 건은 평점 작성 자체가 불가하다(B9).
+ * 후기와 만족도. 배송완료된 거래에만 달 수 있다.
  *
- * <p><b>피평가자(target) 컬럼을 두지 않는다.</b> 거래를 알면 당사자 2인이 결정되고 그중
- * reviewer 가 아닌 쪽이 target 이므로, 같은 사실을 두 곳에 저장해 어긋나게 두지 않고 유도한다.
- * 명세 4.1 데이터 항목과 의도적으로 다른 선택이다 (ERD_REVIEW 1-5).
+ * 누구를 평가한 건지는 컬럼으로 두지 않고 {@link #getTarget()} 이 거래에서 계산한다.
+ * 거래를 알면 당사자가 둘로 정해지고, 그중 작성자가 아닌 쪽이 평가 대상이다.
  *
- * <p>전제: requester 와 deliverer 가 같은 사람이면 이 유도가 성립하지 않는다.
- * <b>요청 등록 시 자기 경로에 자기 물품을 붙이지 못하도록 서비스에서 막아야 한다.</b>
- *
- * <p>제목 컬럼도 없다 — 명세 4.1 데이터 항목에 제목이 없다.
+ * 주의: 이 계산은 의뢰자와 전달자가 서로 다른 사람이라는 전제에 기대고 있다.
+ * 자기 경로에 자기 물품을 거는 건 요청 단계에서 서비스가 막아야 한다.
  */
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "review",
-        // 4.1 동일 거래·동일 상대 중복 평가 불가
+        // 한 거래에 같은 사람이 두 번 평가하지 못하게 막는다
         uniqueConstraints = @UniqueConstraint(name = "uk_review_order_reviewer",
                 columnNames = {"order_id", "reviewer_id"}),
-        // 5.4 보낸 후기
+        // 내가 쓴 후기 목록의 진입점
         indexes = @Index(name = "idx_review_reviewer", columnList = "reviewer_id, id"))
-// getTarget() 이 order → request → product/delivery → author 까지 4단계를 탄다.
-// 그냥 조회하면 후기 1건마다 SELECT 가 3~4회 더 나가므로, 목록·상세 쿼리는
+// getTarget() 이 order -> request -> product/delivery -> author 까지 네 단계를 탄다.
+// 그냥 조회하면 후기 한 건마다 SELECT 가 서너 번 더 나가므로, 목록과 상세 쿼리에는
 // @EntityGraph(Review.WITH_PARTIES) 를 붙여 한 번에 가져온다.
 @NamedEntityGraph(name = Review.WITH_PARTIES,
         attributeNodes = {
@@ -63,7 +60,7 @@ import java.math.BigDecimal;
         })
 public class Review extends BaseTimeEntity {
 
-    /** 거래 당사자 2인까지 함께 가져오는 페치 플랜. {@link #getTarget()} 을 쓰는 쿼리에 붙인다. */
+    /** 거래 당사자 둘까지 같이 끌어오는 페치 플랜. {@link #getTarget()} 을 쓰는 쿼리에 붙인다. */
     public static final String WITH_PARTIES = "Review.withParties";
 
     @Id
@@ -80,7 +77,7 @@ public class Review extends BaseTimeEntity {
             foreignKey = @ForeignKey(name = "FK_review_reviewer"))
     private User reviewer;
 
-    /** 0.0 ~ 5.0, 0.5 단위. 평균 집계를 하므로 문자열이 아니라 DECIMAL 이다. */
+    /** 0.0 ~ 5.0, 0.5 단위. 평균을 내야 해서 DECIMAL 이다. */
     @Column(nullable = false, precision = 2, scale = 1)
     private BigDecimal rating;
 
@@ -96,11 +93,10 @@ public class Review extends BaseTimeEntity {
     }
 
     /**
-     * 피평가자 = 거래 당사자 2인 중 작성자가 아닌 쪽.
+     * 평가 대상. 거래 당사자 둘 중 작성자가 아닌 쪽이다.
      *
-     * <p><b>공짜가 아니다.</b> 프록시를 4단계 타므로 페치 플랜 없이 부르면 SELECT 가 3~4회
-     * 더 나가고, 트랜잭션 밖이면 {@code LazyInitializationException} 이다.
-     * 조회할 때 {@link #WITH_PARTIES} 를 붙일 것.
+     * 주의: 프록시를 네 단계 탄다. {@link #WITH_PARTIES} 없이 부르면 SELECT 가 서너 번 더
+     * 나가고, 트랜잭션 밖이면 {@code LazyInitializationException} 이 난다.
      */
     public User getTarget() {
         Request request = order.getRequest();

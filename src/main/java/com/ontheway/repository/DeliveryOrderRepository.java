@@ -14,39 +14,41 @@ import java.util.Optional;
 /**
  * 성사된 배송 거래.
  *
- * <p>경로·물품 스냅샷 컬럼을 두지 않기로 했으므로(1-1) 아래 두 {@code exists} 는
- * {@code request} 를 타고 들어간다. <b>이 둘이 연쇄 규칙 (A)(B)를 지키는 유일한 수단이다</b> —
- * DB UNIQUE 로는 강제하지 못하고, 확인과 INSERT 사이의 창은 감수하기로 했다 (2-5 d).
+ * 주의: 아래 두 {@code exists} 가 "경로당 1건", "물품당 1건"을 지키는 유일한 수단이다.
+ * DB 제약이 없으니 수락 전에 반드시 불러야 한다.
  *
- * <p>둘 다 상태를 보지 않는다. 취소·실패해도 행은 남고, 그러면 그 경로·물품은 다시 쓸 수 없다 —
- * <b>재활용 불가가 의도된 동작이다.</b> 새로 등록해야 한다.
+ * 둘 다 상태를 보지 않는다. 한 번 수락된 경로와 물품은 그 거래가 취소나 실패로 끝나도
+ * 행이 남아 계속 true 다. 다시 쓰려면 새로 등록해야 하고, 의도한 동작이다.
  */
 public interface DeliveryOrderRepository extends JpaRepository<DeliveryOrder, Long> {
 
     /**
-     * (A) 이 경로에 이미 성사된 배송이 있는가. 경로 1건 = 배송 1건 (B5).
+     * 이 경로에 이미 성사된 배송이 있는지. 경로 하나에 배송은 한 건뿐이다.
      *
-     * <p>이름의 밑줄은 오타가 아니라 <b>연관관계 경로</b>다({@code request.delivery.id}).
-     * {@code DeliveryOrder} 에 {@code delivery} 필드가 없으니 이름만 보고는 어디를 타는지
-     * 알 수 없어서, 경로를 이름에 그대로 드러낸다.
+     * 이름의 밑줄은 오타가 아니라 연관관계 경로({@code request.delivery.id})다.
+     * {@code DeliveryOrder} 에 {@code delivery} 필드가 없어서 이름만으로는 어디를 타는지
+     * 알 수 없으니 경로를 그대로 드러냈다.
      */
     boolean existsByRequest_Delivery_Id(Long deliveryId);
 
     /**
-     * (B) 이 물품이 이미 거래에 쓰였는가. 물품 게시글은 1회용이다 (B6).
+     * 이 물품이 이미 수락된 거래에 들어갔는지.
      *
-     * <p>수락 전 중복 검증, 2.9/2.10 물품 수정·삭제 가능 여부, 2.6 사용 이력 검증(1-8)이
-     * 전부 이 한 메서드를 쓴다. <b>"쓰였으니 수정 불가"라는 결론은 서비스가 낸다</b> (2-7).
+     * 요청을 보낸 것만으로는 true 가 아니다. 거절당한 물품은 그대로 다시 걸 수 있다.
+     * 반대로 한 번 수락되면 그 거래가 취소나 실패로 끝나도 계속 true 다.
+     *
+     * 수락 전 중복 확인과 물품 수정/삭제 가능 여부가 전부 이 하나를 쓴다.
+     * "쓰였으니 수정 불가"라는 결론은 서비스가 낸다.
      */
     boolean existsByRequest_Product_Id(Long productId);
 
     Optional<DeliveryOrder> findByRequestId(Long requestId);
 
     /**
-     * 4.x 배송 상세·상태 변경. 당사자 2인까지 한 번에 올려둔다.
+     * 배송 상세와 상태 변경에 쓴다. 당사자 둘까지 한 번에 올려둔다.
      *
-     * <p>{@code getDeliveryFee()} / {@code getRequester()} 같은 파생 getter 가 프록시를
-     * 여러 단계 타므로, 이걸 안 쓰면 화면 한 장에 SELECT 가 서너 번 더 나간다.
+     * {@code getDeliveryFee()}, {@code getRequester()} 같은 getter 가 프록시를 여러 단계
+     * 타므로 이걸 안 쓰면 화면 한 장에 SELECT 가 서너 번 더 나간다.
      */
     @Query("""
             select o from DeliveryOrder o
@@ -59,13 +61,13 @@ public interface DeliveryOrderRepository extends JpaRepository<DeliveryOrder, Lo
             """)
     Optional<DeliveryOrder> findByIdWithParties(@Param("id") Long id);
 
-    // ── 스케줄러 ──────────────────────────────────────────────
-    // 둘 다 상태를 쿼리에 박는다. 파라미터로 받으면 "다른 상태로도 부를 수 있는 메서드"처럼
-    // 보이지만 실제로는 이 값 말고는 의미가 없다 — 대상 상태가 곧 스케줄러의 정의다.
+    // --- 스케줄러 ---
+    // 둘 다 대상 상태를 쿼리에 박아뒀다. 파라미터로 받으면 다른 상태로도 부를 수 있는 것처럼
+    // 보이는데, 이 스케줄러는 이 상태 말고는 볼 일이 없다.
 
     /**
-     * ① 예정 배송시각이 도달한 건 → 배송중.
-     * 경로의 날짜와 시각이 분리돼 있어 비교가 두 단계다.
+     * 예정 시각이 지난 건을 배송중으로 넘기려고 찾는다.
+     * 경로의 날짜와 시각이 나뉘어 있어 비교가 두 단계다.
      */
     @Query("""
             select o from DeliveryOrder o
@@ -79,7 +81,7 @@ public interface DeliveryOrderRepository extends JpaRepository<DeliveryOrder, Lo
                                              @Param("nowTime") LocalTime nowTime);
 
     /**
-     * ② 확인요청 후 72시간이 지난 건 → 배송완료.
+     * 확인요청 후 72시간이 지난 건을 배송완료로 넘기려고 찾는다.
      * {@code idx_order_completion_req(status, completion_requested_at)} 를 탄다.
      */
     @Query("""

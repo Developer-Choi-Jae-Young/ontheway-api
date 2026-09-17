@@ -1,11 +1,10 @@
 package com.ontheway.enums;
 
 /**
- * 이메일 인증 코드의 용도.
+ * 이메일 인증 코드의 용도. 코드는 DB 가 아니라 메모리에 들고 있는다.
  *
- * <p>인증 코드는 RDB가 아니라 인메모리에 보관하며, 저장 키는 반드시 {@code email + purpose} 복합이다.
- * email 만으로 잡으면 용도별 코드가 서로 덮어쓰고, A 용도로 받은 코드로 B 용도를 통과시킬 수 있다
- * (ERD_REVIEW 1-3 / 1-7).
+ * 주의: 저장 키는 {@code email + purpose} 여야 한다. email 만으로 잡으면 용도가 다른 코드가
+ * 서로 덮어쓰고, 가입용으로 받은 코드로 비밀번호 찾기를 통과할 수 있다.
  */
 public enum EmailPurpose {
     SIGN_UP,

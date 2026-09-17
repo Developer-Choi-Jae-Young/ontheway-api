@@ -3,11 +3,10 @@ package com.ontheway.enums;
 import lombok.Getter;
 
 /**
- * 신고 유형. 명세 4.3 의 체크박스 목록을 그대로 옮겼다.
+ * 신고 유형. 신고 화면의 체크박스 목록을 그대로 옮겼다.
  *
- * <p>한 신고당 최대 3개까지 선택할 수 있으며, 그 제한은 DB가 아니라 서비스에서 막는다
- * (ERD_REVIEW 1-10). 게시글 신고와 사용자 신고의 선택지가 다르므로
- * {@link #appliesTo(ReportEntityType)} 로 진입점과 맞는지 검증한다.
+ * 게시글용과 사용자용 선택지가 다르므로, 들어온 유형이 신고 대상과 맞는지
+ * {@link #appliesTo(ReportEntityType)} 로 확인한다. 선택 개수 상한은 {@code Report} 가 본다.
  */
 @Getter
 public enum ReportCategory {
@@ -26,7 +25,7 @@ public enum ReportCategory {
     FALSE_IDENTITY("허위 신원 또는 거래 정보를 제공했습니다.", false, true),
     SAFETY_THREAT("안전을 위협하거나 불안감을 주는 행동을 했습니다.", false, true),
 
-    // 양쪽 목록에 동일한 문구로 들어 있다
+    // 양쪽 목록에 같은 문구로 들어 있다
     ABUSIVE_LANGUAGE("욕설·협박 또는 부적절한 언행을 했습니다.", true, true);
 
     private final String label;

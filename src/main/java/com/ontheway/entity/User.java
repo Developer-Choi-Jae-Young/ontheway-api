@@ -16,13 +16,13 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * 사용자. 의뢰자·전달자 역할 구분 컬럼을 두지 않는다 — 어떤 글을 썼는지로만 구분한다.
+ * 사용자.
  *
- * <p>탈퇴는 {@code deletedAt} 하나로 표현하며 별도 status 컬럼이 없다. 탈퇴 사유는
- * {@link UserWithdrawal} 에 남는다 (ERD_REVIEW 1-11).
+ * 의뢰자와 전달자를 나누는 역할 컬럼이 없다. 어떤 글을 썼는지로 그때그때 갈린다.
+ * 탈퇴도 {@code deletedAt} 하나로 표현하고, 탈퇴 사유는 {@link UserWithdrawal} 에 쌓인다.
  *
- * <p>테이블명 {@code user} 는 PostgreSQL·H2 모두 예약어라 백틱으로 감쌌다. Hibernate 가
- * 방언에 맞는 인용부호로 바꿔준다.
+ * 주의: 테이블명 {@code user} 는 PostgreSQL 과 H2 양쪽에서 예약어라 백틱으로 감쌌다.
+ * Hibernate 가 방언에 맞는 인용부호로 바꿔준다.
  */
 @Getter
 @Entity
@@ -37,15 +37,15 @@ public class User extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** 로그인 아이디. 명세 5.2 에서 수정 불가로 명시돼 있다. */
+    /** 로그인 아이디. 가입 후 변경할 수 없다. */
     @Column(nullable = false, updatable = false, length = 30)
     private String accountId;
 
     /**
-     * BCrypt 해시 자체는 60자지만 Spring Security 권장인 {@code DelegatingPasswordEncoder} 는
-     * {@code {bcrypt}} 접두사를 붙여 68자를 낸다. 알고리즘을 바꿔도 안 걸리게 여유를 둔다.
+     * BCrypt 해시가 들어간다. 평문 길이 규칙은 DTO 에서 본다.
      *
-     * <p>명세 1.1 의 "8~15자"는 평문 규칙이라 DTO 에 건다.
+     * 해시는 60자지만 {@code DelegatingPasswordEncoder} 가 {@code {bcrypt}} 접두사를 붙여
+     * 68자를 낸다. 알고리즘을 바꿔도 안 걸리게 100 으로 잡았다.
      */
     @Column(nullable = false, length = 100)
     private String password;
@@ -56,20 +56,14 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false)
     private boolean emailVerified;
 
-    /** 명세의 "최대 7자"는 DTO 에서 강제한다. 여기는 상한선만 잡는다. */
+    /** 글자수 제한은 DTO 에서 본다. 여기는 컬럼 상한만 잡는다. */
     @Column(nullable = false, length = 20)
     private String nickname;
 
     @Column(nullable = false, length = 50)
     private String name;
 
-    /**
-     * 5.2 아바타. URL 한 칸만 둔다 — 원본명·크기 같은 메타데이터를 보관할 이유가 없고,
-     * 교체하면 이전 값은 버려지므로 이력도 필요 없다. 증빙 사진({@link Image})을 별도
-     * 엔티티로 뺀 것과 판단이 다른 이유다.
-     *
-     * <p>미설정이면 {@code null} 이고, 기본 아바타는 프론트가 정한다.
-     */
+    /** 프로필 이미지 URL. 안 올렸으면 {@code null} 이고, 기본 이미지는 프론트가 정한다. */
     @Column(length = 500)
     private String profileImageUrl;
 
@@ -77,14 +71,13 @@ public class User extends BaseTimeEntity {
     private LocalDate birthDate;
 
     /**
-     * 약관 동의 시각. 지금은 전 약관을 필수로 전제하므로 동의 여부를 따로 담지 않는다
-     * — 동의해야만 가입되기 때문이다. 선택 약관이 정해지면 항목당
-     * {@code xxxAgreedAt}(nullable) 한 칸씩 추가한다 (ERD_REVIEW 1-11).
+     * 약관 동의 시각. 전 약관이 필수라 동의 여부는 따로 담지 않는다.
+     * 선택 약관이 생기면 항목당 {@code xxxAgreedAt}(nullable) 을 한 칸씩 늘린다.
      */
     @Column(nullable = false)
     private LocalDateTime termsAgreedAt;
 
-    /** 소프트 삭제 = 탈퇴. 전역 필터를 걸지 않고 조회마다 개별로 거른다 (ERD_REVIEW 2-2). */
+    /** 탈퇴 시각. 전역 필터를 걸지 않으므로 조회마다 직접 걸러야 한다. */
     private LocalDateTime deletedAt;
 
     @Builder
@@ -104,7 +97,7 @@ public class User extends BaseTimeEntity {
         return deletedAt != null;
     }
 
-    /** 5.6 회원탈퇴. 사유는 {@link UserWithdrawal} 을 같은 트랜잭션에서 함께 저장한다. */
+    /** 회원 탈퇴. 사유 {@link UserWithdrawal} 저장을 같은 트랜잭션에서 같이 한다. */
     public void withdraw(LocalDateTime now) {
         this.deletedAt = now;
     }
@@ -130,7 +123,7 @@ public class User extends BaseTimeEntity {
         this.birthDate = birthDate;
     }
 
-    /** 5.2 아바타 변경. {@code null} 을 넣으면 기본 아바타로 되돌아간다. */
+    /** 프로필 이미지 변경. {@code null} 을 넣으면 기본 이미지로 돌아간다. */
     public void changeProfileImage(String profileImageUrl) {
         this.profileImageUrl = profileImageUrl;
     }

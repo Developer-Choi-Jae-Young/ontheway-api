@@ -16,19 +16,21 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * ⚠️ <b>클래스명은 반드시 {@code DeliveryRepository} + {@code Impl} 이어야 한다.</b>
- * 어기면 스프링이 조용히 무시하고 빈 생성 실패로 이어진다 (ERD_REVIEW 2-5 c).
+ * {@link DeliveryRepositoryCustom} 구현. 조건 조각을 {@code List} 에 모았다가 한 번에
+ * {@code and} 로 잇는다. 문자열에 {@code " and "} 를 직접 붙여 나가면 조건이 하나도 안 붙는
+ * 경우와 첫 조건 앞을 매번 따져야 한다.
  *
- * <p>조건 조각을 {@code List} 에 모았다가 한 번에 {@code and} 로 잇는다. 문자열에 직접
- * {@code " and "} 를 붙여 나가면 조건이 하나도 안 붙는 경우와 첫 조건의 접두사를 매번 따져야 한다.
+ * 주의: 클래스명이 {@code DeliveryRepository} + {@code Impl} 이어야 한다. 이름이 어긋나면
+ * 스프링이 이 구현을 조용히 무시하고 빈 생성이 실패한다.
  */
 @RequiredArgsConstructor
 public class DeliveryRepositoryImpl implements DeliveryRepositoryCustom {
 
     /**
-     * 아직 성사된 거래가 없는 글 = "공개 종료" 판정. {@code Delivery.status} 컬럼 대신
-     * anti-join 으로 유도한다 (1-1). 취소·실패한 거래도 행은 남으므로 그 경로는 다시 열리지
-     * 않는다 — 재활용 불가가 의도다.
+     * 아직 수락된 요청이 없는 글만 남기는 조건. 상태 컬럼 대신 anti-join 으로 본다.
+     *
+     * 요청이 들어와 있어도 수락 전이면 그대로 목록에 뜬다. 반대로 한 번 수락됐으면 그 거래가
+     * 취소나 실패로 끝나도 행이 남아 다시 뜨지 않는다.
      */
     private static final String NOT_MATCHED_YET = """
             not exists (
@@ -36,7 +38,7 @@ public class DeliveryRepositoryImpl implements DeliveryRepositoryCustom {
                      join o.request rq
                     where rq.delivery = d)""";
 
-    /** 가까운 배송예정일 순 → 동일 일자는 최신순 (2.2 / 6.1 공통). */
+    /** 배송예정일이 가까운 순, 같은 날짜면 최신순. 두 목록이 같이 쓴다. */
     private static final String ORDER_BY = " order by d.deliveryDate asc, d.id desc";
 
     private final EntityManager em;
@@ -48,7 +50,7 @@ public class DeliveryRepositoryImpl implements DeliveryRepositoryCustom {
 
         where.add("d.deletedAt is null");
         where.add(NOT_MATCHED_YET);
-        // 예정 시작시각이 지나지 않은 글. 날짜와 시각이 분리돼 있어 두 단계로 비교한다
+        // 출발 시각이 아직 안 지난 글. 날짜와 시각이 나뉘어 있어 두 단계로 비교한다
         where.add("(d.deliveryDate > :today"
                 + " or (d.deliveryDate = :today and d.plannedStartTime > :nowTime))");
         params.put("today", now.toLocalDate());
@@ -71,7 +73,7 @@ public class DeliveryRepositoryImpl implements DeliveryRepositoryCustom {
         return slice(where, params, pageable);
     }
 
-    /** 2.2 와 6.1 이 공유하는 동적 필터. 값이 들어온 것만 붙인다. */
+    /** 두 목록이 같이 쓰는 검색 조건. 값이 들어온 것만 붙인다. */
     private static void addFilters(RouteSearchCond cond, List<String> where, Map<String, Object> params) {
         if (StringUtils.hasText(cond.startAddress())) {
             where.add("d.departure.address like :startAddress escape '" + LikePatterns.ESCAPE + "'");
@@ -81,13 +83,12 @@ public class DeliveryRepositoryImpl implements DeliveryRepositoryCustom {
             where.add("d.destination.address like :endAddress escape '" + LikePatterns.ESCAPE + "'");
             params.put("endAddress", LikePatterns.startsWith(cond.endAddress()));
         }
-        // 희망금액은 상한 하나다. 의뢰자가 낼 수 있는 금액 이하인 경로만 남긴다
+        // 의뢰자가 낼 수 있는 금액. 경로의 희망금액이 그 이하인 것만 남긴다
         if (cond.hopePrice() != null) {
             where.add("d.desiredPrice <= :hopePrice");
             params.put("hopePrice", cond.hopePrice());
         }
-        // 만족도 하한 — User 에 평점 캐시 컬럼을 두지 않으므로 Review 를 그 자리에서 집계한다 (2-5 e).
-        // 피평가자 유도 규칙은 ReviewQueries 한 곳에만 둔다.
+        // 만족도 하한. 평점 캐시 컬럼이 없어서 Review 를 이 자리에서 집계한다
         if (cond.minRating() != null) {
             where.add(ReviewQueries.AVG_RATING_OF_ROUTE_AUTHOR + " >= :minRating");
             params.put("minRating", cond.minRating());
@@ -95,12 +96,12 @@ public class DeliveryRepositoryImpl implements DeliveryRepositoryCustom {
     }
 
     /**
-     * 오프셋 페이징. {@code size + 1} 건을 읽어 초과분의 존재로 {@code hasNext} 를 판정하므로
-     * {@code count} 쿼리가 나가지 않는다.
+     * 오프셋 페이징. {@code size + 1} 건을 읽어서 넘치는 게 있는지로 {@code hasNext} 를
+     * 정하므로 {@code count} 쿼리가 나가지 않는다.
      */
     private Slice<Delivery> slice(List<String> where, Map<String, Object> params, Pageable pageable) {
         // Unpaged 를 그냥 두면 getPageSize() 가 UnsupportedOperationException 을 던진다.
-        // 무슨 일인지 알 수 없는 예외 대신 "여긴 페이징이 필수다"라고 말해준다
+        // 영문 모를 예외 대신 뭘 해야 하는지 알려준다
         if (pageable.isUnpaged()) {
             throw new IllegalArgumentException(
                     "경로 목록은 반드시 페이징한다. PageRequest.of(page, size) 로 호출할 것");

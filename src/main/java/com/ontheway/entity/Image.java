@@ -17,16 +17,13 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 배송완료 증빙 사진. 명세 3.1 의 "배송완료 확인요청" 시점에 1장만 등록된다.
+ * 배송완료 증빙 사진. 확인요청할 때 한 장 올라가고 {@code unique(order)} 가 한 장을 강제한다.
+ * 이 행이 없으면 확인요청 상태로 넘어갈 수 없다(검사는 서비스가 한다).
  *
- * <p>컬럼 하나로 URL 만 들고 있지 않고 엔티티로 분리한 이유는 파일 메타데이터(원본명·저장명·
- * 크기·확장자)를 함께 보관하기 위해서다. {@code unique(order)} 가 1장을 강제한다 (B20).
+ * URL 한 칸이 아니라 엔티티로 뺀 건 원본명, 저장명, 크기, 확장자를 같이 들고 있기 위해서다.
  *
- * <p>이 행이 없으면 COMPLETION_REQUESTED 로 전이할 수 없다 — 검사는 서비스가 한다.
- *
- * <p><b>테이블명은 {@code file} 인데 클래스명은 {@code Image} 다.</b> 테이블·컬럼 이름은 팀이
- * 확정한 ERD 그대로 두고, 자바 쪽만 {@code java.io.File}·{@code MultipartFile} 과 섞이지 않도록
- * 바꿨다. 업로드 서비스에서 두 타입을 한 파일에 같이 쓰게 되기 때문이다.
+ * 주의: 테이블명은 {@code file} 인데 클래스명은 {@code Image} 다. 테이블과 컬럼 이름은 팀이
+ * 정한 그대로 두고, 자바 쪽만 {@code java.io.File}, {@code MultipartFile} 과 헷갈리지 않게 바꿨다.
  */
 @Getter
 @Entity
