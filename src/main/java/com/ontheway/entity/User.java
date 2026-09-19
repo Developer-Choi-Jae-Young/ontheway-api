@@ -53,9 +53,6 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false, length = 255)
     private String email;
 
-    @Column(nullable = false)
-    private boolean emailVerified;
-
     /** 글자수 제한은 DTO 에서 본다. 여기는 컬럼 상한만 잡는다. */
     @Column(nullable = false, length = 20)
     private String nickname;
@@ -81,12 +78,11 @@ public class User extends BaseTimeEntity {
     private LocalDateTime deletedAt;
 
     @Builder
-    public User(String accountId, String password, String email, boolean emailVerified,
+    public User(String accountId, String password, String email,
                 String nickname, String name, LocalDate birthDate, LocalDateTime termsAgreedAt) {
         this.accountId = accountId;
         this.password = password;
         this.email = email;
-        this.emailVerified = emailVerified;
         this.nickname = nickname;
         this.name = name;
         this.birthDate = birthDate;
@@ -102,10 +98,6 @@ public class User extends BaseTimeEntity {
         this.deletedAt = now;
     }
 
-    public void verifyEmail() {
-        this.emailVerified = true;
-    }
-
     public void changeNickname(String nickname) {
         this.nickname = nickname;
     }
@@ -116,7 +108,6 @@ public class User extends BaseTimeEntity {
 
     public void changeEmail(String email) {
         this.email = email;
-        this.emailVerified = true;
     }
 
     public void changeBirthDate(LocalDate birthDate) {
