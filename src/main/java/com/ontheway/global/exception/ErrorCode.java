@@ -28,6 +28,10 @@ public enum ErrorCode {
     EMAIL_NOT_VERIFIED(HttpStatus.FORBIDDEN, "이메일 인증이 필요합니다."),
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
     TOO_MANY_ATTEMPTS(HttpStatus.TOO_MANY_REQUESTS, "인증 시도 횟수를 초과했습니다. 인증번호를 다시 요청해주세요."),
+
+    DELIVERY_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "이동 경로 게시글을 찾지 못하였습니다."),
+    IMAGE_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "이미지를 찾지 못하였습니다."),
+    DELIVERY_BOARD_NOT_OWNED(HttpStatus.INTERNAL_SERVER_ERROR, "작성자가 아닌 사용자는 이동 경로 게시글을 수정할수 없습니다.")
     ;
 
     private final HttpStatus status;
