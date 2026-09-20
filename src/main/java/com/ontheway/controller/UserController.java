@@ -4,6 +4,7 @@ import com.ontheway.dto.request.*;
 import com.ontheway.dto.response.*;
 import com.ontheway.global.response.ApiResponse;
 import com.ontheway.global.security.CustomUserDetails;
+import com.ontheway.infra.storage.R2FileUploader;
 import com.ontheway.service.AuthService;
 import com.ontheway.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,6 +24,7 @@ import java.time.LocalDateTime;
 public class UserController {
     private final UserService userService;
     private final AuthService authService;
+    private final R2FileUploader r2FileUploader;
 
     @PostMapping("/signup")
     @Operation(summary = "회원가입")
@@ -85,4 +87,5 @@ public class UserController {
     public ApiResponse<?> ratings(MemberRatingRequestDto memberRatingRequestDto) {
         return ApiResponse.success(MemberRatingResponseDto.builder().build());
     }
+
 }
