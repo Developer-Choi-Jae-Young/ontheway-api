@@ -15,6 +15,8 @@ import java.util.List;
 public class ProductListResponseDto {
     @Schema(description = "물품 목록")
     private List<Product> productList;
+    @Schema(description = "다음 페이지 존재 여부")
+    private boolean hasNext;
 
     @Data
     @Builder

@@ -36,6 +36,18 @@ public interface RequestRepository extends JpaRepository<Request, Long> {
     boolean existsByDeliveryId(Long deliveryId);
 
     /**
+     * 이 요청이 아직 열려 있는지(거절·종료되지 않았는지) 확인하는 메서드
+     * 수락이 물품 행 잠금을 얻은 직후에 쓴다
+     * (락을 획득한 시점에 "DB에 저장된 진짜 최신 데이터 기준으로 이 요청이 닫혔는가?"를 검증).
+     *
+     * 항상 SQL 로 다시 묻는다는 점이 이 메서드를 쓰는 이유
+     * 수락은 요청과 물품을 잠금보다 먼저 읽는데, 그 사이에 물품 삭제가 커밋돼 요청을 닫았어도 
+     * 이미 읽어 둔 엔티티의 {@code rejectedAt} 은 갱신되지 않는다
+     * (잠금 쿼리는 영속성 컨텍스트에 있는 엔티티를 덮어쓰지 않는다).
+     */
+    boolean existsByIdAndRejectedAtIsNull(Long id);
+
+    /**
      * 배송 수락 처리에 필요한 모든 연관 정보(전달자, 의뢰자, 이미 수락되었는지 여부)를 
      * 쿼리 1번으로 가져올 수 있음
      * 전달자/의뢰자 권한 검증 및 주문(order) 존재 여부 판단에 사용
@@ -199,6 +211,24 @@ public interface RequestRepository extends JpaRepository<Request, Long> {
     int rejectSiblingsByProduct(@Param("productId") Long productId,
                                 @Param("acceptedRequestId") Long acceptedRequestId,
                                 @Param("now") LocalDateTime now);
+
+    /**
+     * 물품이 삭제될 때 그 물품에 걸린 요청을 전부 종료한다.
+     *
+     * 전달자의 요청 목록과 경로의 {@code requestCount} 는 물품 삭제 여부를 안 보고 {@code rejectedAt} 만
+     * 본다. 여기서 같이 닫아두면 두 쿼리를 고치지 않고도 삭제된 물품이 목록에서 빠진다.
+     * 수락된 요청은 없다. 수락된 물품은 삭제할 수 없어서 서비스가 먼저 막는다.
+     *
+     * 벌크 호출이라 위의 두 메서드와 같은 주의가 붙는다. 트랜잭션 맨 마지막에 부를 것.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update Request r
+               set r.rejectedAt = :now
+             where r.product.id = :productId
+               and r.rejectedAt is null
+            """)
+    int rejectByProduct(@Param("productId") Long productId, @Param("now") LocalDateTime now);
 
     int countByDelivery(Delivery delivery);
 }

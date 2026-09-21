@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -64,4 +66,19 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Slice<Product> findMyProductsByNamePattern(@Param("authorId") Long authorId,
                                                @Param("namePattern") String namePattern,
                                                Pageable pageable);
+
+    /**
+     * 물품 ID 목록에 대응하는 '사용자별 등록 순번(일련번호)'을 단일 쿼리로 일괄 조회
+     * 
+     * [N+1 방지] 한 페이지 물품들의 '사용자별 등록 순번'을 IN 절로 묶어 1번에 조회
+     * 서브쿼리 카운트 시 deletedAt을 검사하지 않아, 물품 삭제 시에도 기존 일련번호가 밀리지 않음
+     */
+    @Query("""
+            select p.id as productId,
+                   (select count(q) from Product q
+                     where q.author.id = p.author.id and q.id <= p.id) as serialNumber
+              from Product p
+             where p.id in :ids
+            """)
+    List<ProductSerialNumber> findSerialNumbers(@Param("ids") Collection<Long> ids);
 }

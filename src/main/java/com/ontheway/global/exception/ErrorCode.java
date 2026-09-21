@@ -42,7 +42,12 @@ public enum ErrorCode {
     PROOF_IMAGE_REQUIRED(HttpStatus.BAD_REQUEST, "배송 완료 사진을 등록해주세요."),
     // 용량 숫자는 application.properties(spring.servlet.multipart.max-file-size) 한 곳에서만 정하므로 메시지에 적지 않는다
     INVALID_IMAGE(HttpStatus.BAD_REQUEST, "이미지 파일만, 허용 용량 이내로 등록할 수 있습니다."),
-    IMAGE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "이미지 업로드에 실패했습니다.")
+    IMAGE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "이미지 업로드에 실패했습니다."),
+
+    // 물품 게시글. HTTP 상태는 명세에 없어 임의로 정한 값이다
+    PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "물품 게시글을 찾지 못하였습니다."),
+    PRODUCT_LOCKED(HttpStatus.CONFLICT, "이미 수락된 거래에 쓰인 물품은 수정하거나 삭제할 수 없습니다. 진행 중인 배송은 배송 취소를 이용해주세요."),
+    PRODUCT_NOT_CHANGED(HttpStatus.BAD_REQUEST, "변경된 내용이 없어 수정할 수 없습니다.")
     ;
 
     private final HttpStatus status;
