@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 의뢰 요청. 이용내역 조회도 여기서 시작한다. 수락 여부와 상관없이 요청 하나당 한 행이
@@ -33,6 +34,23 @@ public interface RequestRepository extends JpaRepository<Request, Long> {
      * 계속 수정 불가다. 조건을 바꾸려면 새 경로를 등록해야 한다. 삭제는 요청이 있든 없든 된다.
      */
     boolean existsByDeliveryId(Long deliveryId);
+
+    /**
+     * 배송 수락 처리에 필요한 모든 연관 정보(전달자, 의뢰자, 이미 수락되었는지 여부)를 
+     * 쿼리 1번으로 가져올 수 있음
+     * 전달자/의뢰자 권한 검증 및 주문(order) 존재 여부 판단에 사용
+     * Fetch Join을 적용하여 불필요한 추가 DB 조회(N+1 문제)를 방지
+     */
+    @Query("""
+            select r from Request r
+              join fetch r.delivery d
+              join fetch d.author
+              join fetch r.product p
+              join fetch p.author
+              left join fetch r.order
+             where r.id = :id
+            """)
+    Optional<Request> findByIdWithParties(@Param("id") Long id);
 
     // --- 경로 상세 ---
     // 보는 사람이 게시자냐 의뢰자냐 제3자냐에 따라 볼 수 있는 요청이 다르다.
