@@ -1,14 +1,12 @@
 package com.ontheway.service;
 
-import com.ontheway.dto.request.MemberLoginRequestDto;
+import com.ontheway.dto.request.TokenReissueRequestDto;
 import com.ontheway.dto.response.MemberLoginResponseDto;
-import com.ontheway.entity.User;
 import com.ontheway.global.exception.BusinessException;
 import com.ontheway.global.exception.ErrorCode;
 import com.ontheway.global.security.jwt.JwtTokenProvider;
-import com.ontheway.repository.UserRepository;
+import com.ontheway.infra.cache.RefreshTokenStore;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -16,23 +14,39 @@ import java.time.LocalDateTime;
 @Service
 @RequiredArgsConstructor
 public class AuthService {
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final RefreshTokenStore refreshTokenStore;
 
-    public MemberLoginResponseDto login(MemberLoginRequestDto dto) {
-        User user = userRepository.findByAccountIdAndDeletedAtIsNull(dto.getAccountId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.LOGIN_FAILED));
+    public MemberLoginResponseDto reissue(TokenReissueRequestDto dto) {
+        String refreshToken = dto.getRefreshToken();
 
-        if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
-            throw new BusinessException(ErrorCode.LOGIN_FAILED);
+        if (!jwtTokenProvider.validateToken(refreshToken)) {
+            if (jwtTokenProvider.isExpired(refreshToken)) {
+                throw new BusinessException(ErrorCode.TOKEN_EXPIRED);
+            }
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
         }
 
-        String token = jwtTokenProvider.createToken(user.getAccountId());
+        String accountId = jwtTokenProvider.getAccountId(refreshToken);
+
+        if (!refreshTokenStore.matches(accountId, refreshToken)) {
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
+        }
+
+        String newAccessToken = jwtTokenProvider.createAccessToken(accountId);
+        String newRefreshToken = jwtTokenProvider.createRefreshToken(accountId);
+
+        refreshTokenStore.save(accountId, newRefreshToken);
 
         return MemberLoginResponseDto.builder()
-                .accessToken(token)
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
                 .createdAt(LocalDateTime.now())
                 .build();
     }
+
+    public void logout(String accountId) {
+        refreshTokenStore.delete(accountId);
+    }
+
 }
