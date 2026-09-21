@@ -11,8 +11,5 @@ public class MemberLoginRequestDto {
     private String accountId;
     @Schema(description = "회원 비밀번호")
     private String password;
-    @Schema(description = "액세스 토큰")
-    private String accessToken;
-    @Schema(description = "리프레시 토큰")
-    private String refreshToken;
+
 }

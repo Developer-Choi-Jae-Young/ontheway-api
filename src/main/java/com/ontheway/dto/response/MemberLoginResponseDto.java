@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
 public class MemberLoginResponseDto {
     @Schema(description = "액세스 토큰")
     private String accessToken;
+    @Schema(description = "리프레시 토큰")
+    private String refreshToken;
     @Schema(description = "로그인 시간")
     private LocalDateTime createdAt;
 }

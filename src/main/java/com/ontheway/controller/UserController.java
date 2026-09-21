@@ -9,6 +9,7 @@ import com.ontheway.service.AuthService;
 import com.ontheway.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -64,16 +65,15 @@ public class UserController {
         return ApiResponse.success(MemberUpdateInfoResponseDto.builder().build());
     }
 
-    @PostMapping("/login")
-    @Operation(summary = "로그인")
-    public ApiResponse<?> login(@RequestBody MemberLoginRequestDto dto) {
-        return ApiResponse.success(authService.login(dto));
+    @PostMapping("/reissue")
+    public ApiResponse<MemberLoginResponseDto> reissue(@RequestBody @Valid TokenReissueRequestDto  dto) {
+        return ApiResponse.success(authService.reissue(dto));
     }
 
     @PostMapping("/logout")
-    @Operation(summary = "로그아웃")
-    public ApiResponse<?> logout(@RequestBody MemberLogoutRequestDto memberLogoutRequestDto) {
-        return ApiResponse.success(MemberLogoutResponseDto.builder().build());
+    public ApiResponse<Void> logout(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        authService.logout(userDetails.getAccountId());
+        return ApiResponse.success(null);
     }
 
     @DeleteMapping("/account")

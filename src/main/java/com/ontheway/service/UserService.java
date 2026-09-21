@@ -14,8 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import java.sql.Timestamp;
+import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -28,10 +27,12 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final VerificationCodeStore codeStore;
 
+    @Transactional
     public boolean isDuplicated(MemberCheckIdReqeustDto dto) {
         return userRepository.existsByAccountId(dto.getUserId());
     }
 
+    @Transactional
     public void signup(MemberSaveRequestDto dto) {
         String verifyKey = VerificationKeyUtil.of(EmailPurpose.SIGN_UP, dto.getEmail());
 
