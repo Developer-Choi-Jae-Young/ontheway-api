@@ -15,4 +15,7 @@ import java.time.LocalDateTime;
 public class MemberFindPasswordResponseDto {
     @Schema(description = "생성일시")
     private LocalDateTime createdAt;
+    @Schema(description = "메시지")
+    private String message;
+
 }

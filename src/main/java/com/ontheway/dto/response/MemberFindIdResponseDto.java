@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class MemberFindIdResponseDto {
-    @Schema(description = "생성일시")
-    private LocalDateTime createdAt;
+    @Schema(description = "유저 아이디")
+    private String accountId;
+
 }
