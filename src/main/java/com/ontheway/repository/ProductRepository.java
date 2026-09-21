@@ -1,12 +1,16 @@
 package com.ontheway.repository;
 
 import com.ontheway.entity.Product;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -23,6 +27,18 @@ import java.util.Optional;
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
     Optional<Product> findByIdAndDeletedAtIsNull(Long id);
+
+    /**
+     * 물품 행 잠금. 수락과 물품 수정·삭제가 쓴다.
+     *
+     * 수락: 같은 물품이 서로 다른 경로에서 동시에 수락되는 걸 막는다. 경로 쪽 잠금은 경로별이라 이 경쟁을
+     * 못 잡는다. 데드락을 피하려고 항상 {@link DeliveryRepository#findByIdForUpdate} 로 경로를 먼저 잠근 뒤에 부른다.
+     *
+     * 수정·삭제: 수락과 같은 행을 잠근 뒤에 수락 여부를 확인해야 방금 수락된 물품이 바뀌지 않는다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Product p where p.id = :id")
+    Optional<Product> findByIdForUpdate(@Param("id") Long id);
 
     /**
      * 내 게시글의 의뢰 목록. 필터는 물품명 검색어 하나다.
@@ -52,4 +68,19 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Slice<Product> findMyProductsByNamePattern(@Param("authorId") Long authorId,
                                                @Param("namePattern") String namePattern,
                                                Pageable pageable);
+
+    /**
+     * 물품 ID 목록에 대응하는 '사용자별 등록 순번(일련번호)'을 단일 쿼리로 일괄 조회
+     * 
+     * [N+1 방지] 한 페이지 물품들의 '사용자별 등록 순번'을 IN 절로 묶어 1번에 조회
+     * 서브쿼리 카운트 시 deletedAt을 검사하지 않아, 물품 삭제 시에도 기존 일련번호가 밀리지 않음
+     */
+    @Query("""
+            select p.id as productId,
+                   (select count(q) from Product q
+                     where q.author.id = p.author.id and q.id <= p.id) as serialNumber
+              from Product p
+             where p.id in :ids
+            """)
+    List<ProductSerialNumber> findSerialNumbers(@Param("ids") Collection<Long> ids);
 }

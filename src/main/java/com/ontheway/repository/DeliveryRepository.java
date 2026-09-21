@@ -2,9 +2,11 @@ package com.ontheway.repository;
 
 import com.ontheway.entity.Delivery;
 import com.ontheway.entity.User;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -24,6 +26,17 @@ import java.util.Optional;
 public interface DeliveryRepository extends JpaRepository<Delivery, Long>, DeliveryRepositoryCustom {
 
     Optional<Delivery> findByIdAndDeletedAtIsNull(Long id);
+
+    /**
+     * 배송 처리(수락, 상태 전이)의 진입 잠금. 삭제 여부는 거르지 않는다. 판단은 서비스가 한다.
+     *
+     * 경로 하나에는 배송이 한 건뿐이라 이 행을 잠그면 그 배송의 상태 전이와, 같은 경로에 들어온
+     * 요청들의 동시 수락이 한 줄로 서게 된다. {@code existsByRequest_Delivery_Id} 확인과 INSERT
+     * 사이에 다른 수락이 끼어드는 걸 DB 제약 없이 막는 유일한 수단이다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select d from Delivery d where d.id = :id")
+    Optional<Delivery> findByIdForUpdate(@Param("id") Long id);
 
     /** 최근 게시물 불러오기. 직전에 쓴 글 한 건을 등록 양식에 채워준다. 삭제글은 뺀다. */
     Optional<Delivery> findTopByAuthorIdAndDeletedAtIsNullOrderByIdDesc(Long authorId);

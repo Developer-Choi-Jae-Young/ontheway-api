@@ -13,6 +13,8 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ProductSaveResponseDto {
+    @Schema(description = "등록된 물품 ID")
+    private Long productId;
     @Schema(description = "생성 일시")
     private LocalDateTime createdAt;
 }

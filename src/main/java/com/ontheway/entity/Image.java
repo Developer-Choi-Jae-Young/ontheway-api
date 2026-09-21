@@ -32,6 +32,9 @@ import lombok.NoArgsConstructor;
         uniqueConstraints = @UniqueConstraint(name = "uk_file_order", columnNames = "order_id"))
 public class Image extends BaseCreatedEntity {
 
+    /** 컬럼 크기. 업로드(OrderService)가 원본 파일명을 이 길이로 자른다. */
+    public static final int ORIGINAL_NAME_MAX_LENGTH = 255;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -45,7 +48,7 @@ public class Image extends BaseCreatedEntity {
     private String fileUrl;
 
     /** 사용자가 올린 원래 파일명. */
-    @Column(nullable = false, length = 255)
+    @Column(nullable = false, length = ORIGINAL_NAME_MAX_LENGTH)
     private String originalName;
 
     /** 스토리지에 저장된 이름. UUID 기반이라 짧다. */

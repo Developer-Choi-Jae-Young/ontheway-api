@@ -67,6 +67,21 @@ public interface DeliveryOrderRepository extends JpaRepository<DeliveryOrder, Lo
             """)
     Optional<DeliveryOrder> findByIdWithParties(@Param("id") Long id);
 
+    /**
+     * 수락 이후의 상태를 전이 시키는 데에 쓴다. 경로 하나에는 배송이 한 건뿐이라 경로 ID 만으로 찾는다.
+     * 올려두는 범위는 {@link #findByIdWithParties} 와 같다.
+     */
+    @Query("""
+            select o from DeliveryOrder o
+              join fetch o.request rq
+              join fetch rq.product p
+              join fetch p.author
+              join fetch rq.delivery d
+              join fetch d.author
+             where d.id = :deliveryId
+            """)
+    Optional<DeliveryOrder> findByDeliveryIdWithParties(@Param("deliveryId") Long deliveryId);
+
     // --- 스케줄러 ---
     // 둘 다 대상 상태를 쿼리에 박아뒀다. 파라미터로 받으면 다른 상태로도 부를 수 있는 것처럼
     // 보이는데, 이 스케줄러는 이 상태 말고는 볼 일이 없다.
