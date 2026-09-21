@@ -43,6 +43,12 @@ import java.time.LocalDateTime;
         @Index(name = "idx_product_author", columnList = "author_id, deleted_at, id"))
 public class Product extends BaseTimeEntity {
 
+    // 컬럼 크기. 입력 검증(ProductService)도 이 값을 그대로 쓴다
+    public static final int NAME_MAX_LENGTH = 100;
+    public static final int INFO_MAX_LENGTH = 500;
+    public static final int ADDRESS_MAX_LENGTH = 255;
+    public static final int COORDINATE_SCALE = 7;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -53,25 +59,25 @@ public class Product extends BaseTimeEntity {
             foreignKey = @ForeignKey(name = "FK_product_author"))
     private User author;
 
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false, length = NAME_MAX_LENGTH)
     private String itemName;
 
-    @Column(length = 500)
+    @Column(length = INFO_MAX_LENGTH)
     private String itemInfo;
 
     @Embedded
     @AttributeOverrides({
-            @AttributeOverride(name = "address", column = @Column(name = "pickup_address", nullable = false, length = 255)),
-            @AttributeOverride(name = "latitude", column = @Column(name = "pickup_latitude", nullable = false, precision = 10, scale = 7)),
-            @AttributeOverride(name = "longitude", column = @Column(name = "pickup_longitude", nullable = false, precision = 10, scale = 7))
+            @AttributeOverride(name = "address", column = @Column(name = "pickup_address", nullable = false, length = ADDRESS_MAX_LENGTH)),
+            @AttributeOverride(name = "latitude", column = @Column(name = "pickup_latitude", nullable = false, precision = 10, scale = COORDINATE_SCALE)),
+            @AttributeOverride(name = "longitude", column = @Column(name = "pickup_longitude", nullable = false, precision = 10, scale = COORDINATE_SCALE))
     })
     private Location pickup;
 
     @Embedded
     @AttributeOverrides({
-            @AttributeOverride(name = "address", column = @Column(name = "destination_address", nullable = false, length = 255)),
-            @AttributeOverride(name = "latitude", column = @Column(name = "destination_latitude", nullable = false, precision = 10, scale = 7)),
-            @AttributeOverride(name = "longitude", column = @Column(name = "destination_longitude", nullable = false, precision = 10, scale = 7))
+            @AttributeOverride(name = "address", column = @Column(name = "destination_address", nullable = false, length = ADDRESS_MAX_LENGTH)),
+            @AttributeOverride(name = "latitude", column = @Column(name = "destination_latitude", nullable = false, precision = 10, scale = COORDINATE_SCALE)),
+            @AttributeOverride(name = "longitude", column = @Column(name = "destination_longitude", nullable = false, precision = 10, scale = COORDINATE_SCALE))
     })
     private Location destination;
 

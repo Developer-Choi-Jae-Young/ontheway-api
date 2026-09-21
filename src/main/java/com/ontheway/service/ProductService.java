@@ -1,5 +1,6 @@
 package com.ontheway.service;
 
+import com.ontheway.dto.request.ProductContentRequest;
 import com.ontheway.dto.request.ProductDetailRequestDto;
 import com.ontheway.dto.request.ProductListRequestDto;
 import com.ontheway.dto.request.ProductSaveRequestDto;
@@ -12,7 +13,6 @@ import com.ontheway.dto.response.ProductUpdateResponseDto;
 import com.ontheway.entity.Location;
 import com.ontheway.entity.Product;
 import com.ontheway.entity.User;
-import com.ontheway.enums.PaymentType;
 import com.ontheway.global.exception.BusinessException;
 import com.ontheway.global.exception.ErrorCode;
 import com.ontheway.repository.DeliveryOrderRepository;
@@ -20,7 +20,6 @@ import com.ontheway.repository.ProductRepository;
 import com.ontheway.repository.ProductSerialNumber;
 import com.ontheway.repository.RequestRepository;
 import com.ontheway.repository.UserRepository;
-import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Slice;
@@ -35,6 +34,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+
+import static com.ontheway.global.exception.Preconditions.require;
 
 /**
  * 내 물품 게시글(의뢰 물품). 목록, 등록, 상세, 수정, 삭제.
@@ -51,12 +52,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ProductService {
 
-    /** {@code Product} 컬럼 길이. */
-    private static final int NAME_MAX_LENGTH = 100;
-    private static final int INFO_MAX_LENGTH = 500;
-    private static final int ADDRESS_MAX_LENGTH = 255;
-    /** 좌표 컬럼이 DECIMAL(10,7) 이다. */
-    private static final int COORDINATE_SCALE = 7;
+    /** 목록 한 페이지의 최대 크기. 현재 값은 임의로 정해진 가정 */
+    private static final int MAX_PAGE_SIZE = 50;
     private static final int MAX_LATITUDE = 90;
     private static final int MAX_LONGITUDE = 180;
 
@@ -72,14 +69,12 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public ProductListResponseDto list(Long userId, ProductListRequestDto dto) {
-        // 페이지 크기 값에 대한 유효성 검사
-        require(dto != null && dto.getPage() >= 0 && dto.getSize() >= 1, ErrorCode.INVALID_INPUT);
+        require(dto != null && dto.getPage() >= 0 && dto.getSize() >= 1 && dto.getSize() <= MAX_PAGE_SIZE,
+                ErrorCode.INVALID_INPUT);
 
-        // 다음 페이지가 존재하는 지 확인(무한스크롤을 위함)
+        // 무한 스크롤이라 전체 개수 대신 다음 페이지 여부만 필요해서 Slice 로 받는다
         Slice<Product> slice = productRepository.searchMyProducts(
                 userId, dto.getKeyword(), PageRequest.of(dto.getPage(), dto.getSize()));
-
-        // 일련번호 일괄 조회 및 DTO 매핑
         Map<Long, Long> serialNumbers = serialNumbersOf(slice.getContent());
 
         List<ProductListResponseDto.Product> products = slice.getContent().stream()
@@ -97,8 +92,7 @@ public class ProductService {
                 .build();
     }
 
-    /** 리스트 -> 해시 테이블 변환
-     * 한 페이지 분량을 쿼리 한 번에 가져와 (key: 물품ID, value: 일련번호)으로 변환. 빈 페이지면 쿼리를 아예 안 보냄 */
+    /** 한 페이지 물품들의 일련번호를 쿼리 한 번으로 가져와 물품 ID 로 묶는다. 빈 페이지면 쿼리를 보내지 않는다. */
     private Map<Long, Long> serialNumbersOf(List<Product> products) {
         if (products.isEmpty()) {
             return Map.of();
@@ -113,26 +107,11 @@ public class ProductService {
     @Transactional
     public ProductSaveResponseDto create(Long userId, ProductSaveRequestDto dto) {
         require(dto != null, ErrorCode.INVALID_INPUT);
-        Product.Content content = toContent(Input.builder()
-                .name(dto.getProductName())
-                .info(dto.getProductInfo())
-                .pickupAddress(dto.getProductDeliveryAddress())
-                .pickupLatitude(dto.getProductDeliveryLatitude())
-                .pickupLongitude(dto.getProductDeliveryLongitude())
-                .destinationAddress(dto.getEndAddress())
-                .destinationLatitude(dto.getEndLatitude())
-                .destinationLongitude(dto.getEndLongitude())
-                .pickupTime(dto.getReceivingTime())
-                .desiredArrivalTime(dto.getDesiredDeliveryTime())
-                .paymentType(dto.getPaymentType())
-                .deliveryFee(dto.getDeliveryFee())
-                .build());
-        //물품을 등록하려는 사용자가 DB에 존재하는 지 확인(탈퇴 등도 검증)
+        Product.Content content = toContent(dto);
         User author = userRepository.findByIdAndDeletedAtIsNull(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        // 허용 물품·책임 동의 여부는 프론트가 확인(백엔드에서 동의 여부를 검사하지 않음)
-        // 서버는 검증하지 않고 등록 시각을 동의 시각으로 기록만 함
+        // 허용 물품·책임 동의 여부는 프론트가 확인한다. 서버는 검사하지 않고 등록 시각을 동의 시각으로 기록만 한다
         Product saved = productRepository.save(Product.builder()
                 .author(author)
                 .content(content)
@@ -149,14 +128,12 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public ProductDetailResponseDto detail(Long userId, ProductDetailRequestDto dto) {
-        require(dto != null && dto.getProductId() != null, ErrorCode.INVALID_INPUT); //유효성 검사
+        require(dto != null && dto.getProductId() != null, ErrorCode.INVALID_INPUT);
 
-        //삭제된 물품을 제외하여 조회, 작성자가 요청을 보낸 사람과 일치하는 지 검증
         Product product = productRepository.findByIdAndDeletedAtIsNull(dto.getProductId())
                 .filter(found -> isAuthor(found, userId))
                 .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
 
-        // DTO 변환
         User author = product.getAuthor();
         return ProductDetailResponseDto.builder()
                 .productId(product.getId())
@@ -183,20 +160,7 @@ public class ProductService {
     @Transactional
     public ProductUpdateResponseDto update(Long userId, ProductUpdateRequestDto dto) {
         require(dto != null && dto.getProductId() != null, ErrorCode.INVALID_INPUT);
-        Product.Content content = toContent(Input.builder()
-                .name(dto.getProductName())
-                .info(dto.getProductInfo())
-                .pickupAddress(dto.getProductDeliveryAddress())
-                .pickupLatitude(dto.getProductDeliveryLatitude())
-                .pickupLongitude(dto.getProductDeliveryLongitude())
-                .destinationAddress(dto.getEndAddress())
-                .destinationLatitude(dto.getEndLatitude())
-                .destinationLongitude(dto.getEndLongitude())
-                .pickupTime(dto.getReceivingTime())
-                .desiredArrivalTime(dto.getDesiredDeliveryTime())
-                .paymentType(dto.getPaymentType())
-                .deliveryFee(dto.getDeliveryFee())
-                .build());
+        Product.Content content = toContent(dto);
 
         Product product = lockOwned(userId, dto.getProductId());
         requireNotAccepted(product);
@@ -204,8 +168,8 @@ public class ProductService {
         require(!isSame(product, content), ErrorCode.PRODUCT_NOT_CHANGED);
 
         product.update(content);
-        // 응답 DTO에 JPA Auditing으로 자동 채워진 최신 updatedAt을 담기 위해 즉시 flush
-        productRepository.saveAndFlush(product);
+        // 응답의 updatedAt 은 JPA Auditing 이 flush 때 채운다
+        productRepository.flush();
         return ProductUpdateResponseDto.builder().updatedAt(product.getUpdatedAt()).build();
     }
 
@@ -219,9 +183,8 @@ public class ProductService {
 
         LocalDateTime now = LocalDateTime.now();
         product.delete(now);
-        // 타 조회 쿼리가 rejectedAt만 참조하므로, 물품 삭제 시 연관된 요청도 함께 거절 처리
-        // 벌크 UPDATE 실행 시 1차 캐시가 초기화(clear)되므로
-        // 이 로직은 항상 트랜잭션 최하단에 위치해야 하며 이후 기존 엔티티를 참조해선 안 됨
+        // 전달자의 요청 목록과 requestCount 는 rejectedAt 만 보므로 이 물품의 요청도 함께 닫는다.
+        // 벌크 UPDATE 가 영속성 컨텍스트를 비우므로 맨 마지막에 두고, 이 뒤로는 엔티티를 건드리지 않는다
         requestRepository.rejectByProduct(productId, now);
 
         return ProductDeleteResponseDto.builder().updatedAt(now).build();
@@ -250,50 +213,40 @@ public class ProductService {
 
     // --- 입력 검증 ---
 
-    /* 매개변수 순서 오류 방지
-     * 등록과 수정이 받는 값. 같은 타입이 여러 개라 실수로 순서를 바꿔 써도 컴파일이 통과해서 에러를 잡지 못하기 때문 */
-    @Builder
-    private record Input(
-            String name, String info,
-            String pickupAddress, BigDecimal pickupLatitude, BigDecimal pickupLongitude,
-            String destinationAddress, BigDecimal destinationLatitude, BigDecimal destinationLongitude,
-            LocalDateTime pickupTime, LocalDateTime desiredArrivalTime,
-            PaymentType paymentType, Integer deliveryFee) {
-    }
+    /** 등록과 수정이 받는 본문을 검증해 엔티티 본문으로 바꾼다. 길이 상한은 {@link Product} 컬럼 크기다. */
+    private static Product.Content toContent(ProductContentRequest dto) {
+        String name = requireText(dto.getProductName(), Product.NAME_MAX_LENGTH);
+        String info = blankToNull(dto.getProductInfo());
+        require(info == null || info.length() <= Product.INFO_MAX_LENGTH, ErrorCode.INVALID_INPUT);
 
-    private static Product.Content toContent(Input input) {
-        String name = requireText(input.name(), NAME_MAX_LENGTH);
-        String info = blankToNull(input.info());
-        require(info == null || info.length() <= INFO_MAX_LENGTH, ErrorCode.INVALID_INPUT);
+        Location pickup = location(requireText(dto.getProductDeliveryAddress(), Product.ADDRESS_MAX_LENGTH),
+                dto.getProductDeliveryLatitude(), dto.getProductDeliveryLongitude());
+        Location destination = location(requireText(dto.getEndAddress(), Product.ADDRESS_MAX_LENGTH),
+                dto.getEndLatitude(), dto.getEndLongitude());
 
-        String pickupAddress = requireText(input.pickupAddress(), ADDRESS_MAX_LENGTH);
-        String destinationAddress = requireText(input.destinationAddress(), ADDRESS_MAX_LENGTH);
-        Location pickup = location(pickupAddress, input.pickupLatitude(), input.pickupLongitude());
-        Location destination = location(destinationAddress, input.destinationLatitude(), input.destinationLongitude());
-
-        require(input.pickupTime() != null && input.desiredArrivalTime() != null
-                && input.paymentType() != null && input.deliveryFee() != null, ErrorCode.INVALID_INPUT);
-        // 배송비는 0 이상, 희망 도착 시간은 수령 시간보다 뒤여야 한다.
-        require(input.deliveryFee() >= 0, ErrorCode.INVALID_INPUT);
-        require(input.desiredArrivalTime().isAfter(input.pickupTime()), ErrorCode.INVALID_INPUT);
+        require(dto.getReceivingTime() != null && dto.getDesiredDeliveryTime() != null
+                && dto.getPaymentType() != null && dto.getDeliveryFee() != null, ErrorCode.INVALID_INPUT);
+        // 배송비는 0 이상, 희망 도착 시간은 수령 시간보다 뒤여야 한다
+        require(dto.getDeliveryFee() >= 0, ErrorCode.INVALID_INPUT);
+        require(dto.getDesiredDeliveryTime().isAfter(dto.getReceivingTime()), ErrorCode.INVALID_INPUT);
 
         return Product.Content.builder()
                 .itemName(name)
                 .itemInfo(info)
                 .pickup(pickup)
                 .destination(destination)
-                .pickupTime(input.pickupTime())
-                .desiredArrivalTime(input.desiredArrivalTime())
-                .paymentType(input.paymentType())
-                .deliveryFee(input.deliveryFee())
+                .pickupTime(dto.getReceivingTime())
+                .desiredArrivalTime(dto.getDesiredDeliveryTime())
+                .paymentType(dto.getPaymentType())
+                .deliveryFee(dto.getDeliveryFee())
                 .build();
     }
 
     private static Location location(String address, BigDecimal latitude, BigDecimal longitude) {
         require(latitude != null && longitude != null, ErrorCode.INVALID_INPUT);
-        // 저장될 값(소수 7자리)으로 먼저 맞춘 뒤 범위를 본다. 수정에서 '변경 없음' 비교도 같은 자릿수로 해야 한다.
-        BigDecimal scaledLatitude = latitude.setScale(COORDINATE_SCALE, RoundingMode.HALF_UP);
-        BigDecimal scaledLongitude = longitude.setScale(COORDINATE_SCALE, RoundingMode.HALF_UP);
+        // 저장될 자릿수로 먼저 맞춘 뒤 범위를 본다. 수정에서 '변경 없음' 비교도 같은 자릿수로 해야 한다
+        BigDecimal scaledLatitude = latitude.setScale(Product.COORDINATE_SCALE, RoundingMode.HALF_UP);
+        BigDecimal scaledLongitude = longitude.setScale(Product.COORDINATE_SCALE, RoundingMode.HALF_UP);
         require(within(scaledLatitude, MAX_LATITUDE) && within(scaledLongitude, MAX_LONGITUDE), ErrorCode.INVALID_INPUT);
         return Location.builder().address(address).latitude(scaledLatitude).longitude(scaledLongitude).build();
     }
@@ -334,11 +287,5 @@ public class ProductService {
         return Objects.equals(stored.getAddress(), next.getAddress())
                 && stored.getLatitude().compareTo(next.getLatitude()) == 0
                 && stored.getLongitude().compareTo(next.getLongitude()) == 0;
-    }
-
-    private static void require(boolean condition, ErrorCode errorCode) {
-        if (!condition) {
-            throw new BusinessException(errorCode);
-        }
     }
 }

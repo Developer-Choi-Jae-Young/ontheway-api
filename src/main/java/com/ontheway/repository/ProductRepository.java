@@ -29,10 +29,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Optional<Product> findByIdAndDeletedAtIsNull(Long id);
 
     /**
-     * 수락 때만 쓰는 잠금. 같은 물품이 서로 다른 경로에서 동시에 수락되는 걸 막는다. 경로 쪽 잠금은
-     * 경로별이라 이 메서드로 잡고자 하는 경쟁(race)을 못 잡는다.
+     * 물품 행 잠금. 수락과 물품 수정·삭제가 쓴다.
      *
-     * 데드락을 피하려고 항상 {@link DeliveryRepository#findByIdForUpdate} 로 경로를 먼저 잠근 뒤에 부른다.
+     * 수락: 같은 물품이 서로 다른 경로에서 동시에 수락되는 걸 막는다. 경로 쪽 잠금은 경로별이라 이 경쟁을
+     * 못 잡는다. 데드락을 피하려고 항상 {@link DeliveryRepository#findByIdForUpdate} 로 경로를 먼저 잠근 뒤에 부른다.
+     *
+     * 수정·삭제: 수락과 같은 행을 잠근 뒤에 수락 여부를 확인해야 방금 수락된 물품이 바뀌지 않는다.
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Product p where p.id = :id")

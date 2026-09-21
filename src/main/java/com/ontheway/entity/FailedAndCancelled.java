@@ -36,6 +36,9 @@ import lombok.NoArgsConstructor;
         uniqueConstraints = @UniqueConstraint(name = "uk_fnc_order", columnNames = "order_id"))
 public class FailedAndCancelled extends BaseCreatedEntity {
 
+    /** 컬럼 크기. 사유 검증(OrderService)도 이 값을 그대로 쓴다. */
+    public static final int REASON_MAX_LENGTH = 500;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -57,7 +60,7 @@ public class FailedAndCancelled extends BaseCreatedEntity {
     private User actor;
 
     /** 사유. 거래 당사자 양쪽에 보인다. */
-    @Column(length = 500)
+    @Column(length = REASON_MAX_LENGTH)
     private String reason;
 
     private FailedAndCancelled(DeliveryOrder order, ResultType resultType, User actor, String reason) {

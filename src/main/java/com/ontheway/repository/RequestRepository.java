@@ -36,33 +36,26 @@ public interface RequestRepository extends JpaRepository<Request, Long> {
     boolean existsByDeliveryId(Long deliveryId);
 
     /**
-     * 이 요청이 아직 열려 있는지(거절·종료되지 않았는지) 확인하는 메서드
-     * 수락이 물품 행 잠금을 얻은 직후에 쓴다
-     * (락을 획득한 시점에 "DB에 저장된 진짜 최신 데이터 기준으로 이 요청이 닫혔는가?"를 검증).
+     * 이 요청이 아직 열려 있는지(거절·종료되지 않았는지). 수락이 물품 행 잠금을 얻은 직후에 쓴다.
      *
-     * 항상 SQL 로 다시 묻는다는 점이 이 메서드를 쓰는 이유
-     * 수락은 요청과 물품을 잠금보다 먼저 읽는데, 그 사이에 물품 삭제가 커밋돼 요청을 닫았어도 
-     * 이미 읽어 둔 엔티티의 {@code rejectedAt} 은 갱신되지 않는다
-     * (잠금 쿼리는 영속성 컨텍스트에 있는 엔티티를 덮어쓰지 않는다).
+     * 항상 SQL 로 다시 묻는다는 점이 이 메서드를 쓰는 이유다. 수락은 요청을 물품 잠금보다 먼저 읽는데,
+     * 그 사이에 물품 삭제가 커밋돼 요청을 닫았어도 이미 읽어 둔 엔티티의 {@code rejectedAt} 은
+     * 갱신되지 않는다(잠금 쿼리는 영속성 컨텍스트에 있는 엔티티를 덮어쓰지 않는다).
      */
     boolean existsByIdAndRejectedAtIsNull(Long id);
 
     /**
-     * 배송 수락 처리에 필요한 모든 연관 정보(전달자, 의뢰자, 이미 수락되었는지 여부)를 
-     * 쿼리 1번으로 가져올 수 있음
-     * 전달자/의뢰자 권한 검증 및 주문(order) 존재 여부 판단에 사용
-     * Fetch Join을 적용하여 불필요한 추가 DB 조회(N+1 문제)를 방지
+     * 수락할 요청. 경로와 물품은 ID 만 쓰므로 페치하지 않는다.
+     *
+     * 물품을 여기서 올려두면 뒤의 물품 잠금 조회가 이 낡은 엔티티를 그대로 돌려줘서 삭제 여부를 못 본다.
+     * {@code order} 는 mappedBy 쪽 1:1 이라 페치하지 않아도 SELECT 가 따로 나가므로 같이 가져온다.
      */
     @Query("""
             select r from Request r
-              join fetch r.delivery d
-              join fetch d.author
-              join fetch r.product p
-              join fetch p.author
               left join fetch r.order
              where r.id = :id
             """)
-    Optional<Request> findByIdWithParties(@Param("id") Long id);
+    Optional<Request> findByIdWithOrder(@Param("id") Long id);
 
     // --- 경로 상세 ---
     // 보는 사람이 게시자냐 의뢰자냐 제3자냐에 따라 볼 수 있는 요청이 다르다.

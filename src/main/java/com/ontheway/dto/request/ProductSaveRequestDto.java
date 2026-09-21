@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
-public class ProductSaveRequestDto {
+public class ProductSaveRequestDto implements ProductContentRequest {
     @Schema(description = "상품명")
     private String productName;
     @Schema(description = "배송지 주소")
