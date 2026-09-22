@@ -40,6 +40,7 @@ public class SecurityConfig {
     // Swagger UI 및 API Docs 관련 경로 목록
     private static final String[] PERMIT_ALL_PATTERNS = {
             "/swagger-ui/**",
+            "/health",
             "/v3/api-docs/**",
             "/swagger-resources/**",
             "/webjars/**",
