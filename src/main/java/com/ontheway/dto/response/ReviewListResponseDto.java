@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -26,6 +27,8 @@ public class ReviewListResponseDto {
         private Long reviewId;
         @Schema(description = "후기 내용")
         private String reviewContent;
+        @Schema(description = "평점")
+        private BigDecimal rating;
         @Schema(description = "후기 작성자 이미지")
         private String reviewerImage;
         @Schema(description = "후기 작성자 이름")
