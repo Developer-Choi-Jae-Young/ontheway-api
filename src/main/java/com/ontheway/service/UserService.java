@@ -2,7 +2,6 @@ package com.ontheway.service;
 
 import com.ontheway.dto.request.*;
 import com.ontheway.dto.response.*;
-import com.ontheway.entity.Review;
 import com.ontheway.entity.User;
 import com.ontheway.enums.EmailPurpose;
 import com.ontheway.global.exception.BusinessException;
@@ -12,18 +11,19 @@ import com.ontheway.global.util.VerificationKeyUtil;
 import com.ontheway.infra.cache.RefreshTokenStore;
 import com.ontheway.infra.cache.VerificationCodeStore;
 import com.ontheway.infra.mail.MailSender;
+import com.ontheway.repository.RatingSummary;
 import com.ontheway.repository.ReviewRepository;
 import com.ontheway.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Slice;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -185,24 +185,19 @@ public class UserService {
                 .createdAt(LocalDateTime.now())
                 .build();
     }
-    
-    //내 후기 조회
-    public SliceResponseDto<MemberRatingResponseDto> getRatings(Long userId, Pageable pageable) {
-        Slice<Review> reviews = reviewRepository.findReceived(userId, pageable);
 
-        List<MemberRatingResponseDto> content = reviews.getContent().stream()
-                .map(review -> MemberRatingResponseDto.builder()
-                        .reviewerNickname(review.getReviewer().getNickname())
-                        .reviewerProfileImageUrl(review.getReviewer().getProfileImageUrl())
-                        .rating(review.getRating())
-                        .content(review.getContent())
-                        .createdAt(review.getCreatedAt())
-                        .build())
-                .toList();
+    //내 평균 만족도 조회
+    public MemberRatingResponseDto getRatings(Long userId) {
+        RatingSummary summary = reviewRepository.findRatingSummary(userId);
 
-        return SliceResponseDto.<MemberRatingResponseDto>builder()
-                .content(content)
-                .hasNext(reviews.hasNext())
+        BigDecimal averageRating = summary.getAverageRating() != null
+                ? BigDecimal.valueOf(summary.getAverageRating()).setScale(1, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO.setScale(1);
+        long reviewCount = summary.getReviewCount() != null ? summary.getReviewCount() : 0L;
+
+        return MemberRatingResponseDto.builder()
+                .averageRating(averageRating)
+                .reviewCount(reviewCount)
                 .build();
     }
 }

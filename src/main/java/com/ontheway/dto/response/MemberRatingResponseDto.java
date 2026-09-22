@@ -14,14 +14,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class MemberRatingResponseDto {
-    @Schema(description = "리뷰어")
-    private String reviewerNickname;
-    @Schema(description = "리뷰어 이미지")
-    private String reviewerProfileImageUrl;
-    @Schema(description = "별점")
-    private BigDecimal rating;
-    @Schema(description = "리뷰 내용")
-    private String content;
-    @Schema(description = "리뷰 작성된 시간")
-    private LocalDateTime createdAt;
+    @Schema(description = "평균 점수")
+    private BigDecimal averageRating;
+    @Schema(description = "총 갯수")
+    private long reviewCount;
 }

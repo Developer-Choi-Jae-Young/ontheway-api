@@ -95,9 +95,8 @@ public class UserController {
 
     @GetMapping("/ratings")
     @Operation(summary = "내 후기 조회")
-    public ApiResponse<?> ratings(@AuthenticationPrincipal CustomUserDetails userDetails,
-                                  @PageableDefault(size = 20) Pageable pageable) {
-        return ApiResponse.success(userService.getRatings(userDetails.getUserId(), pageable));
+    public ApiResponse<?> ratings(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ApiResponse.success(userService.getRatings(userDetails.getUserId()));
     }
 
 }
