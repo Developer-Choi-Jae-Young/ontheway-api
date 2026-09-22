@@ -26,14 +26,18 @@ public class RequestDeliveryListResponseDto {
         private Long requestId;
         @Schema(description = "요청자 이름")
         private String requesterName;
+        @Schema(description = "요청자 닉네임")
+        private String requesterNickname;
         @Schema(description = "요청자 이미지")
         private String requesterImage;
         @Schema(description = "물품 수령지(주소)")
         private String productDeliveryAddress;
         @Schema(description = "배송 목적지")
         private String deliveryDestination;
+        @Schema(description = "물품명")
+        private String itemName;
         @Schema(description = "물품 정보")
-        private String productInfo;
+        private String itemInfo;
         @Schema(description = "배송료")
         private Integer deliveryFee;
         @Schema(description = "물건 수령 시간")

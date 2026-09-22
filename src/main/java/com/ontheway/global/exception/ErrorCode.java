@@ -47,7 +47,11 @@ public enum ErrorCode {
     // 물품 게시글. HTTP 상태는 명세에 없어 임의로 정한 값이다
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "물품 게시글을 찾지 못하였습니다."),
     PRODUCT_LOCKED(HttpStatus.CONFLICT, "이미 수락된 거래에 쓰인 물품은 수정하거나 삭제할 수 없습니다. 진행 중인 배송은 배송 취소를 이용해주세요."),
-    PRODUCT_NOT_CHANGED(HttpStatus.BAD_REQUEST, "변경된 내용이 없어 수정할 수 없습니다.")
+    PRODUCT_NOT_CHANGED(HttpStatus.BAD_REQUEST, "변경된 내용이 없어 수정할 수 없습니다."),
+
+    //의뢰 요청
+    DELIVERY_CLOSED(HttpStatus.NOT_FOUND, "거래가 매칭된 게시글입니다."),
+    DUPLICATE_REQUEST(HttpStatus.NOT_FOUND, "이미 의뢰 요청한 게시글입니다.")
     ;
 
     private final HttpStatus status;
