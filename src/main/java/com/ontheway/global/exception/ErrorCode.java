@@ -57,7 +57,12 @@ public enum ErrorCode {
     DUPLICATE_REVIEW(HttpStatus.CONFLICT, "이미 후기가 등록된 매칭 게시글입니다."),
     DELIVERY_NOT_COMPLETED(HttpStatus.BAD_REQUEST, "배송완료 이후 후기 작성이 가능합니다."),
     ORDER_NOT_FOUND(HttpStatus.BAD_REQUEST, "게시글 조회를 실패하였습니다."),
-    INVALID_RATING(HttpStatus.BAD_REQUEST, "평점은 0점에서 5점 사이 0.5점 단위로 입력해주세요.")
+    INVALID_RATING(HttpStatus.BAD_REQUEST, "평점은 0점에서 5점 사이 0.5점 단위로 입력해주세요."),
+
+    // 신고
+    REPORT_CATEGORY_REQUIRED(HttpStatus.BAD_REQUEST, "신고 유형을 1개 이상 선택해주세요."),
+    REPORT_CATEGORY_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "신고 유형은 최대 3개까지 선택할 수 있습니다."),
+    REPORT_CONTENT_REQUIRED(HttpStatus.BAD_REQUEST, "신고 내용을 입력해주세요.")
     ;
 
     private final HttpStatus status;
