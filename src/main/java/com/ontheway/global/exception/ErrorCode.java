@@ -51,7 +51,13 @@ public enum ErrorCode {
 
     //의뢰 요청
     DELIVERY_CLOSED(HttpStatus.NOT_FOUND, "거래가 매칭된 게시글입니다."),
-    DUPLICATE_REQUEST(HttpStatus.NOT_FOUND, "이미 의뢰 요청한 게시글입니다.")
+    DUPLICATE_REQUEST(HttpStatus.NOT_FOUND, "이미 의뢰 요청한 게시글입니다."),
+    
+    //후기
+    DUPLICATE_REVIEW(HttpStatus.CONFLICT, "이미 후기가 등록된 매칭 게시글입니다."),
+    DELIVERY_NOT_COMPLETED(HttpStatus.BAD_REQUEST, "배송완료 이후 후기 작성이 가능합니다."),
+    ORDER_NOT_FOUND(HttpStatus.BAD_REQUEST, "게시글 조회를 실패하였습니다."),
+    INVALID_RATING(HttpStatus.BAD_REQUEST, "평점은 0점에서 5점 사이 0.5점 단위로 입력해주세요.")
     ;
 
     private final HttpStatus status;
