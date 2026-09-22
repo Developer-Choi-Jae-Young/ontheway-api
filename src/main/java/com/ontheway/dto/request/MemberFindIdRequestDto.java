@@ -1,11 +1,13 @@
 package com.ontheway.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
 public class MemberFindIdRequestDto {
     @Schema(description = "이메일")
+    @NotBlank
     private String email;
     @Schema(description = "인증코드")
     private String validCode;

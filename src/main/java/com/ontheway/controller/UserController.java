@@ -11,11 +11,14 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 
 @RestController
@@ -43,14 +46,14 @@ public class UserController {
 
     @PostMapping("/find/id")
     @Operation(summary = "아이디 찾기")
-    public ApiResponse<?> findId(@RequestBody MemberFindIdRequestDto memberFindIdRequestDto) {
-        return ApiResponse.success(MemberFindIdResponseDto.builder().build());
+    public ApiResponse<?> findId(@RequestBody @Valid MemberFindIdRequestDto dto) {
+        return ApiResponse.success(userService.findId(dto));
     }
 
     @PostMapping("/find/password")
     @Operation(summary = "비밀번호 찾기")
-    public ApiResponse<?> findPassword(@RequestBody MemberFindPasswordRequestDto memberFindPasswordRequestDto) {
-        return ApiResponse.success(MemberFindPasswordResponseDto.builder().build());
+    public ApiResponse<?> findPassword(@RequestBody @Valid MemberFindPasswordRequestDto dto) {
+        return ApiResponse.success(userService.resetPassword(dto));
     }
 
     @GetMapping("/info")
@@ -61,16 +64,23 @@ public class UserController {
 
     @PatchMapping(value = "/info", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "내 정보 수정")
-    public ApiResponse<?> updateInfo(@RequestPart MemberUpdateInfoRequestDto memberUpdateInfoRequestDto, @RequestPart(required = false) MultipartFile image) {
-        return ApiResponse.success(MemberUpdateInfoResponseDto.builder().build());
+    public ApiResponse<?> updateInfo(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                     @RequestPart MemberUpdateInfoRequestDto dto,
+                                     @RequestPart(required = false) MultipartFile image) throws IOException {
+        String imageUrl = (image != null && !image.isEmpty())
+                ? r2FileUploader.upload(image)
+                : null;
+        return ApiResponse.success(userService.updateInfo(userDetails.getUserId(), dto, imageUrl));
     }
 
     @PostMapping("/reissue")
+    @Operation(summary = "토큰 재발급")
     public ApiResponse<MemberLoginResponseDto> reissue(@RequestBody @Valid TokenReissueRequestDto  dto) {
         return ApiResponse.success(authService.reissue(dto));
     }
 
     @PostMapping("/logout")
+    @Operation(summary = "로그아웃")
     public ApiResponse<Void> logout(@AuthenticationPrincipal CustomUserDetails userDetails) {
         authService.logout(userDetails.getAccountId());
         return ApiResponse.success(null);
@@ -78,14 +88,16 @@ public class UserController {
 
     @DeleteMapping("/account")
     @Operation(summary = "회원 탈퇴")
-    public ApiResponse<?> deleteAccount(@RequestBody MemberDeleteAccountRequestDto memberDeleteAccountRequestDto) {
-        return ApiResponse.success(MemberDeleteAccountResponseDto.builder().build());
+    public ApiResponse<?> deleteAccount(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                        @RequestBody @Valid MemberDeleteAccountRequestDto dto) {
+        return ApiResponse.success(userService.withdraw(userDetails.getUserId(), dto));
     }
 
     @GetMapping("/ratings")
-    @Operation(summary = "내 만족도 조회")
-    public ApiResponse<?> ratings(MemberRatingRequestDto memberRatingRequestDto) {
-        return ApiResponse.success(MemberRatingResponseDto.builder().build());
+    @Operation(summary = "내 후기 조회")
+    public ApiResponse<?> ratings(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                  @PageableDefault(size = 20) Pageable pageable) {
+        return ApiResponse.success(userService.getRatings(userDetails.getUserId(), pageable));
     }
 
 }
