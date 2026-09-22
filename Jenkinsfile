@@ -34,8 +34,17 @@ pipeline {
 
         stage('Health Check') {
             steps {
-                sh 'sleep 15'
-                sh 'curl -f https://swyp-ontheway.duckdns.org/health'
+                sh '''
+                    for i in $(seq 1 40); do
+                        if curl -f https://swyp-ontheway.duckdns.org/health; then
+                            exit 0
+                        fi
+                        echo "앱이 아직 안 떴습니다. 3초 대기 후 재시도... ($i/40)"
+                        sleep 3
+                    done
+                    echo "120초 넘게 health check 실패"
+                    exit 1
+                '''
             }
         }
     }
