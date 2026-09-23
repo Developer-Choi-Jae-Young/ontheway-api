@@ -45,11 +45,17 @@ public class DeliveryService {
     public DeliveryDetailResponseDto detail(Long userId, DeliveryDetailRequestDto deliveryDetailRequestDto) {
         User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        Delivery delivery = deliveryRepository.findById(deliveryDetailRequestDto.getDeliveryId()).orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOT_FOUND));
+        Delivery delivery = deliveryRepository.findById(deliveryDetailRequestDto.getDeliveryId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOT_FOUND));
         List<DeliveryOrder> deliveryOrders = deliveryOrderRepository.findByRequest_Delivery(delivery);
         List<FailedAndCancelled> list = failedAndCancelledRepository.findByOrder_Request_Delivery(delivery);
         FailedAndCancelled failedAndCancelled = list.isEmpty() ? null : list.getFirst();
-        Image image = imageRepository.findByOrderId(deliveryOrders.getFirst().getId()).orElseThrow(() -> new BusinessException(ErrorCode.IMAGE_NOT_FOUND));
+        boolean hasOrders = !deliveryOrders.isEmpty();
+        DeliveryOrder firstOrder = hasOrders ? deliveryOrders.getFirst() : null;
+        Image image = null;
+        if (hasOrders) {
+            image = imageRepository.findByOrderId(firstOrder.getId()).orElse(null);
+        }
 
         return DeliveryDetailResponseDto.builder()
                 .deliveryId(delivery.getId())
@@ -57,32 +63,31 @@ public class DeliveryService {
                 .endAddress(delivery.getDestination().getAddress())
                 .deliveryDate(delivery.getDeliveryDate().atTime(delivery.getPlannedStartTime()))
                 .hopePrice(delivery.getDesiredPrice())
-                .deliveryDate(delivery.getDeliveryDate().atTime(delivery.getPlannedStartTime()))
                 .addInfo(delivery.getAdditionalInfo())
                 .createdAt(delivery.getCreatedAt())
-                .estimatedDeliveryTime(LocalDateTime.of(delivery.getDeliveryDate(), delivery.getPlannedEndTime()) )
-                .currentDeliveryStatus(deliveryOrders.isEmpty() ? DeliveryStatus.DELIVERY_WAITING : deliveryOrders.getFirst().getStatus())
-                .userImage(delivery.getAuthor().getProfileImageUrl())
-                .userName(delivery.getAuthor().getName())
-                .requesterInfo(DeliveryDetailResponseDto.RequesterInfo.builder()
-                        .paymentType(deliveryOrders.getFirst().getProduct().getPaymentType())
-                        .desiredDeliveryTime(deliveryOrders.getFirst().getProduct().getDesiredArrivalTime())
-                        .userImage(deliveryOrders.getFirst().getProduct().getAuthor().getProfileImageUrl())
-                        .userName(deliveryOrders.getFirst().getProduct().getAuthor().getName())
-                        .productDeliveryAddress(deliveryOrders.getFirst().getProduct().getPickup().getAddress())
-                        .deliveryDestination(deliveryOrders.getFirst().getProduct().getDestination().getAddress())
-                        .productInfo(deliveryOrders.getFirst().getProduct().getItemInfo())
-                        .deliveryFee(deliveryOrders.getFirst().getDeliveryFee())
-                        .receivingTime(deliveryOrders.getFirst().getProduct().getPickupTime())
-                        .build())
-                .deliveryFail(failedAndCancelled.getOrder().getStatus() == DeliveryStatus.FAILED ? DeliveryDetailResponseDto.DeliveryFail.builder().failReason(failedAndCancelled.getReason()).build() : null)
-                .deliveryCancel(failedAndCancelled.getOrder().getStatus() == DeliveryStatus.CANCELED ? DeliveryDetailResponseDto.DeliveryCancel.builder().cancelReason(failedAndCancelled.getReason()).build() : null)
-                .deliverySuccessCheck(DeliveryDetailResponseDto.DeliverySuccessCheck.builder().deliverySuccessCheckImage(image.getFileUrl()).build())
+                .estimatedDeliveryTime(LocalDateTime.of(delivery.getDeliveryDate(), delivery.getPlannedEndTime()))
+                .currentDeliveryStatus(!hasOrders ? DeliveryStatus.DELIVERY_WAITING : firstOrder.getStatus())
+                .userImage(delivery.getAuthor() != null ? delivery.getAuthor().getProfileImageUrl() : null)
+                .userName(delivery.getAuthor() != null ? delivery.getAuthor().getName() : null)
+                .requesterInfo(hasOrders ? DeliveryDetailResponseDto.RequesterInfo.builder()
+                                           .paymentType(firstOrder.getProduct().getPaymentType())
+                                           .desiredDeliveryTime(firstOrder.getProduct().getDesiredArrivalTime())
+                                           .userImage(firstOrder.getProduct().getAuthor().getProfileImageUrl())
+                                           .userName(firstOrder.getProduct().getAuthor().getName())
+                                           .productDeliveryAddress(firstOrder.getProduct().getPickup().getAddress())
+                                           .deliveryDestination(firstOrder.getProduct().getDestination().getAddress())
+                                           .productInfo(firstOrder.getProduct().getItemInfo())
+                                           .deliveryFee(firstOrder.getDeliveryFee())
+                                           .receivingTime(firstOrder.getProduct().getPickupTime())
+                                           .build() : null)
+                .deliveryFail(failedAndCancelled != null && failedAndCancelled.getOrder().getStatus() == DeliveryStatus.FAILED ? DeliveryDetailResponseDto.DeliveryFail.builder().failReason(failedAndCancelled.getReason()).build() : null)
+                .deliveryCancel(failedAndCancelled != null && failedAndCancelled.getOrder().getStatus() == DeliveryStatus.CANCELED ? DeliveryDetailResponseDto.DeliveryCancel.builder().cancelReason(failedAndCancelled.getReason()).build() : null)
+                .deliverySuccessCheck(image != null ? DeliveryDetailResponseDto.DeliverySuccessCheck.builder().deliverySuccessCheckImage(image.getFileUrl()).build() : null)
                 .deliveryStatusHistory(deliveryOrders.stream().map(
-                        item -> DeliveryDetailResponseDto.DeliveryStatusHistory.builder()
-                                .deliveryStatus(item.getStatus()).deliveryDate(item.getCreatedAt()).build())
-                        .toList())
-                .build();
+                                item -> DeliveryDetailResponseDto.DeliveryStatusHistory.builder()
+                                        .deliveryStatus(item.getStatus())
+                                        .deliveryDate(item.getCreatedAt())
+                                        .build()).toList()).build();
     }
 
     @Transactional
