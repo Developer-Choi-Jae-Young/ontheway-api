@@ -23,10 +23,10 @@ public class Location {
     @Column(nullable = false, length = 255)
     private String address;
 
-    @Column(nullable = false, precision = 10, scale = 7)
+    @Column(nullable = true, precision = 10, scale = 7)
     private BigDecimal latitude;
 
-    @Column(nullable = false, precision = 10, scale = 7)
+    @Column(nullable = true, precision = 10, scale = 7)
     private BigDecimal longitude;
 
     @Builder
