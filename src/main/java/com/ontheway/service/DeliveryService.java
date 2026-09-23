@@ -47,7 +47,8 @@ public class DeliveryService {
 
         Delivery delivery = deliveryRepository.findById(deliveryDetailRequestDto.getDeliveryId()).orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOT_FOUND));
         List<DeliveryOrder> deliveryOrders = deliveryOrderRepository.findByRequest_Delivery(delivery);
-        FailedAndCancelled failedAndCancelled = failedAndCancelledRepository.findByOrder_Request_Delivery(delivery).getFirst();
+        List<FailedAndCancelled> list = failedAndCancelledRepository.findByOrder_Request_Delivery(delivery);
+        FailedAndCancelled failedAndCancelled = list.isEmpty() ? null : list.getFirst();
         Image image = imageRepository.findByOrderId(deliveryOrders.getFirst().getId()).orElseThrow(() -> new BusinessException(ErrorCode.IMAGE_NOT_FOUND));
 
         return DeliveryDetailResponseDto.builder()
