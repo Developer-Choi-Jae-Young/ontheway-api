@@ -70,4 +70,6 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long>, Deliv
                     "AND (:rating IS NULL OR (SELECT COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.order.request.delivery.author = d.author) >= :rating) " +
                     "AND d.deletedAt IS NULL")
     List<Delivery> findAllBySearchAuthorAndDeletedAt(@Param("author") User author, @Param("startAddress") String startAddress, @Param("endAddress") String endAddress, @Param("rating") Double rating, @Param("hopePrice") Integer hopePrice, Pageable pageable);
+
+    List<Delivery> findByAuthor(User user);
 }

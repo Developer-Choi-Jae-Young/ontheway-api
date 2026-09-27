@@ -31,6 +31,13 @@ public class DeliveryController {
         return ApiResponse.success(deliveryService.detail(userId, deliveryDetailRequestDto));
     }
 
+    @GetMapping("/current")
+    @Operation(summary = "이동 경로 최근 게시글 조회")
+    public ApiResponse<DeliveryCurrentDetailResponseDto> currentDetail(@AuthenticationPrincipal CustomUserDetails customUserDetails) {
+        Long userId = customUserDetails.getUserId();
+        return ApiResponse.success(deliveryService.currentDetail(userId));
+    }
+
     @PostMapping
     @Operation(summary = "이동 경로 게시글 등록")
     public ApiResponse<DeliverySaveResponseDto> create(@AuthenticationPrincipal CustomUserDetails customUserDetails, @RequestBody DeliverySaveRequestDto deliverySaveRequestDto) {
