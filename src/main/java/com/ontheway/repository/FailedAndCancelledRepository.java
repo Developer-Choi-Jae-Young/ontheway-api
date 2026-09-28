@@ -26,5 +26,7 @@ public interface FailedAndCancelledRepository extends JpaRepository<FailedAndCan
 
     Page<FailedAndCancelled> findByOrder_Request_Product_AuthorAndOrder_StatusIn(User user, List<DeliveryStatus> failed, PageRequest of);
 
+    Page<FailedAndCancelled> findByOrder_Request_Delivery_AuthorAndOrder_StatusIn(User user, List<DeliveryStatus> failed, PageRequest of);
+
     List<FailedAndCancelled> findByOrder_Request_Delivery(Delivery orderRequestDelivery);
 }
