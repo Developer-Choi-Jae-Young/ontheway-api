@@ -19,6 +19,8 @@ public class DeliveryUpdateRequestDto {
     private String addInfo;
     @Schema(description = "희망금액")
     private Integer hopePrice;
-    @Schema(description = "배송 예정 시간")
-    private LocalDateTime estimatedDeliveryTime;
+    @Schema(description = "배송 예정 시작 시간")
+    private LocalDateTime estimatedStartDeliveryTime;
+    @Schema(description = "배송 예정 종료 시간")
+    private LocalDateTime estimatedEndDeliveryTime;
 }
