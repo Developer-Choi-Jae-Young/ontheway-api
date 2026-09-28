@@ -40,6 +40,8 @@ public class DeliveryDetailResponseDto {
     private String userImage;
     @Schema(description = "사용자 이름")
     private String userName;
+    @Schema(description = "사용자 번호")
+    private Long userId;
     @Schema(description = "요청자 정보")
     private RequesterInfo requesterInfo;
     @Schema(description = "배송 실패 정보")

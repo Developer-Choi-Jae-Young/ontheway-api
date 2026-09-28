@@ -92,6 +92,7 @@ public class DeliveryService {
                 .currentDeliveryStatus(!hasOrders ? DeliveryStatus.DELIVERY_WAITING : firstOrder.getStatus())
                 .userImage(delivery.getAuthor() != null ? delivery.getAuthor().getProfileImageUrl() : null)
                 .userName(delivery.getAuthor() != null ? delivery.getAuthor().getName() : null)
+                .userId(delivery.getAuthor() != null ? delivery.getAuthor().getId() : null)
                 .requesterInfo(hasOrders ? DeliveryDetailResponseDto.RequesterInfo.builder()
                                            .paymentType(firstOrder.getProduct().getPaymentType())
                                            .desiredDeliveryTime(firstOrder.getProduct().getDesiredArrivalTime())
