@@ -13,6 +13,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -77,11 +78,20 @@ public class HistoryService {
     public HistoryListResponseDto cancelList(Long userId, HistoryListRequestDto historyListRequestDto) {
         User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        Page<FailedAndCancelled> failedAndCancelled = failedAndCancelledRepository.findByOrder_Request_Product_AuthorAndOrder_StatusIn(user,
+        Page<FailedAndCancelled> failedAndCancelledProduct = failedAndCancelledRepository.findByOrder_Request_Product_AuthorAndOrder_StatusIn(user,
                 List.of(DeliveryStatus.FAILED, DeliveryStatus.CANCELED),
                 PageRequest.of(historyListRequestDto.getPage(), historyListRequestDto.getSize()));
 
-        List<HistoryListResponseDto.HistoryList> historyList = cancelToHistoryList(failedAndCancelled);
+        Page<FailedAndCancelled> failedAndCancelledDelivery = failedAndCancelledRepository.findByOrder_Request_Delivery_AuthorAndOrder_StatusIn(user,
+                List.of(DeliveryStatus.FAILED, DeliveryStatus.CANCELED),
+                PageRequest.of(historyListRequestDto.getPage(), historyListRequestDto.getSize()));
+
+        List<HistoryListResponseDto.HistoryList> historyListProduct = cancelToHistoryList(failedAndCancelledProduct);
+        List<HistoryListResponseDto.HistoryList> historyListDelivery = cancelToHistoryList(failedAndCancelledDelivery);
+        List<HistoryListResponseDto.HistoryList> historyList = new ArrayList<>();
+        historyList.addAll(historyListProduct);
+        historyList.addAll(historyListDelivery);
+
         return HistoryListResponseDto.builder().historyList(historyList).build();
     }
 

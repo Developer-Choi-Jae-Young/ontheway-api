@@ -123,8 +123,8 @@ public class DeliveryService {
                         .destination(Location.builder().address(deliverySaveRequestDto.getEndAddress()).build())
                         .additionalInfo(deliverySaveRequestDto.getAddInfo())
                         .departure(Location.builder().address(deliverySaveRequestDto.getStartAddress()).build())
-                        .plannedEndTime(deliverySaveRequestDto.getDeliveryDate().toLocalTime())
-                        .plannedStartTime(deliverySaveRequestDto.getDeliveryDate().toLocalTime())
+                        .plannedStartTime(deliverySaveRequestDto.getEstimatedStartDeliveryTime().toLocalTime())
+                        .plannedEndTime(deliverySaveRequestDto.getEstimatedEndDeliveryTime().toLocalTime())
                         .desiredPrice(deliverySaveRequestDto.getHopePrice())
                         .build())
                 .build());
@@ -143,8 +143,8 @@ public class DeliveryService {
                 .destination(Location.builder().address(deliveryUpdateRequestDto.getEndAddress()).build())
                 .additionalInfo(deliveryUpdateRequestDto.getAddInfo())
                 .departure(Location.builder().address(deliveryUpdateRequestDto.getStartAddress()).build())
-                .plannedEndTime(deliveryUpdateRequestDto.getDeliveryDate().toLocalTime())
-                .plannedStartTime(deliveryUpdateRequestDto.getDeliveryDate().toLocalTime())
+                .plannedEndTime(deliveryUpdateRequestDto.getEstimatedEndDeliveryTime().toLocalTime())
+                .plannedStartTime(deliveryUpdateRequestDto.getEstimatedStartDeliveryTime().toLocalTime())
                 .desiredPrice(deliveryUpdateRequestDto.getHopePrice())
                 .build());
 
