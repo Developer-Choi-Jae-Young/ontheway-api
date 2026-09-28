@@ -143,8 +143,8 @@ public class DeliveryService {
                 .destination(Location.builder().address(deliveryUpdateRequestDto.getEndAddress()).build())
                 .additionalInfo(deliveryUpdateRequestDto.getAddInfo())
                 .departure(Location.builder().address(deliveryUpdateRequestDto.getStartAddress()).build())
-                .plannedEndTime(deliveryUpdateRequestDto.getDeliveryDate().toLocalTime())
-                .plannedStartTime(deliveryUpdateRequestDto.getDeliveryDate().toLocalTime())
+                .plannedEndTime(deliveryUpdateRequestDto.getEstimatedEndDeliveryTime().toLocalTime())
+                .plannedStartTime(deliveryUpdateRequestDto.getEstimatedStartDeliveryTime().toLocalTime())
                 .desiredPrice(deliveryUpdateRequestDto.getHopePrice())
                 .build());
 
