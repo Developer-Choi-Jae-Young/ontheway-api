@@ -6,7 +6,9 @@ import com.ontheway.dto.response.TokenRenewResponseDto;
 import com.ontheway.global.exception.BusinessException;
 import com.ontheway.global.exception.ErrorCode;
 import com.ontheway.global.security.jwt.JwtTokenProvider;
+import com.ontheway.infra.cache.LoginAttemptLimiter;
 import com.ontheway.infra.cache.RefreshTokenStore;
+import com.ontheway.infra.cache.RotationResult;
 import com.ontheway.infra.cache.TokenValidationResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +22,7 @@ import java.time.LocalDateTime;
 public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenStore refreshTokenStore;
+    private final LoginAttemptLimiter loginAttemptLimiter;
 
     public MemberLoginResponseDto reissue(TokenReissueRequestDto dto) {
         String refreshToken = dto.getRefreshToken();
@@ -36,25 +39,30 @@ public class AuthService {
         }
 
         String accountId = jwtTokenProvider.getAccountId(refreshToken);
-        TokenValidationResult result = refreshTokenStore.validate(accountId, refreshToken);
+        String candidateNewRefreshToken = jwtTokenProvider.createRefreshToken(accountId);
+        RotationResult result = refreshTokenStore.rotate(accountId, refreshToken, candidateNewRefreshToken);
 
-        if (result == TokenValidationResult.REUSED) {
+        if (result.status() == TokenValidationResult.REUSED) {
             log.warn("[SECURITY] RefreshToken 재사용 감지 - accountId: {}", accountId);
             refreshTokenStore.delete(accountId); // 해당 계정 세션 전체 강제 무효화
+            if (!loginAttemptLimiter.tryAcquire("reissue:" + accountId)) {
+                throw new BusinessException(ErrorCode.TOO_MANY_ATTEMPTS);
+            }
             throw new BusinessException(ErrorCode.TOKEN_REUSE_DETECTED);
         }
-        if (result == TokenValidationResult.NOT_FOUND) {
+        if (result.status() == TokenValidationResult.NOT_FOUND) {
+            if (!loginAttemptLimiter.tryAcquire("reissue:" + accountId)) {
+                throw new BusinessException(ErrorCode.TOO_MANY_ATTEMPTS);
+            }
             throw new BusinessException(ErrorCode.INVALID_TOKEN);
         }
 
         String newAccessToken = jwtTokenProvider.createAccessToken(accountId);
-        String newRefreshToken = jwtTokenProvider.createRefreshToken(accountId);
-        refreshTokenStore.save(accountId, newRefreshToken);
-        log.info("[AUTH] 토큰 재발급 성공 - accountId: {}, 상태: {}", accountId, result);
+        log.info("[AUTH] 토큰 재발급 성공 - accountId: {}, 상태: {}", accountId, result.status());
 
         return MemberLoginResponseDto.builder()
                 .accessToken(newAccessToken)
-                .refreshToken(newRefreshToken)
+                .refreshToken(result.refreshToken())
                 .createdAt(LocalDateTime.now())
                 .build();
     }

@@ -28,6 +28,8 @@ public class JwtExceptionHandler implements AuthenticationEntryPoint, AccessDeni
 
         if ("TOKEN_EXPIRED".equals(exceptionType)) {
             errorCode = ErrorCode.TOKEN_EXPIRED;
+        } else if ("REFRESH_EXPIRED".equals(exceptionType)) {
+            errorCode = ErrorCode.REFRESH_TOKEN_EXPIRED;
         } else if ("INVALID_TOKEN".equals(exceptionType)) {
             errorCode = ErrorCode.INVALID_TOKEN;
         } else {

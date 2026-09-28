@@ -1,9 +1,11 @@
 package com.ontheway.global.security;
 
 import com.ontheway.global.security.jwt.*;
+import com.ontheway.infra.cache.LoginAttemptLimiter;
 import com.ontheway.infra.cache.RefreshTokenStore;
 import com.ontheway.service.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -24,6 +26,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.Collections;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -35,7 +38,12 @@ public class SecurityConfig {
     private final JwtExceptionHandler jwtExceptionHandler;
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenStore refreshTokenStore;
+    private final LoginAttemptLimiter loginAttemptLimiter;
     private final ObjectMapper objectMapper;
+    private final RefreshTokenCookieFactory refreshTokenCookieFactory;
+
+    @Value("${cors.allowed-origins}")
+    private List<String> allowedOrigins;
 
     // Swagger UI 및 API Docs 관련 경로 목록
     private static final String[] PERMIT_ALL_PATTERNS = {
@@ -60,7 +68,9 @@ public class SecurityConfig {
                                             authenticationManager,
                                             jwtTokenProvider,
                                             refreshTokenStore,
-                                            objectMapper
+                                            loginAttemptLimiter,
+                                            objectMapper,
+                                            refreshTokenCookieFactory
                                             );
 
         http
@@ -107,7 +117,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         return request -> {
             CorsConfiguration configuration = new CorsConfiguration();
-            configuration.setAllowedOriginPatterns(Collections.singletonList("*")); // 허용할 도메인
+            configuration.setAllowedOrigins(allowedOrigins); // 허용할 도메인
             configuration.setAllowedMethods(Collections.singletonList("*")); // 모든 HTTP 메서드 허용
             configuration.setAllowCredentials(true); // 인증 정보 포함 허용
             configuration.setAllowedHeaders(Collections.singletonList("*")); // 모든 헤더 허용
