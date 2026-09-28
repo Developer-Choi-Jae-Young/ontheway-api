@@ -1,6 +1,7 @@
 package com.ontheway.global.security;
 
 import com.ontheway.global.security.jwt.*;
+import com.ontheway.infra.cache.LoginAttemptLimiter;
 import com.ontheway.infra.cache.RefreshTokenStore;
 import com.ontheway.service.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,7 @@ public class SecurityConfig {
     private final JwtExceptionHandler jwtExceptionHandler;
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenStore refreshTokenStore;
+    private final LoginAttemptLimiter loginAttemptLimiter;
     private final ObjectMapper objectMapper;
 
     // Swagger UI 및 API Docs 관련 경로 목록
@@ -60,6 +62,7 @@ public class SecurityConfig {
                                             authenticationManager,
                                             jwtTokenProvider,
                                             refreshTokenStore,
+                                            loginAttemptLimiter,
                                             objectMapper
                                             );
 

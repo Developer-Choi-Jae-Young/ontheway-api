@@ -4,6 +4,7 @@ import com.ontheway.dto.request.MemberLoginRequestDto;
 import com.ontheway.dto.response.MemberLoginResponseDto;
 import com.ontheway.global.exception.ErrorCode;
 import com.ontheway.global.response.ApiResponse;
+import com.ontheway.infra.cache.LoginAttemptLimiter;
 import com.ontheway.infra.cache.RefreshTokenStore;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,15 +24,18 @@ public class JwtLoginFilter extends UsernamePasswordAuthenticationFilter {
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenStore refreshTokenStore;
+    private final LoginAttemptLimiter loginAttemptLimiter;
     private final ObjectMapper objectMapper;
 
     public JwtLoginFilter(AuthenticationManager authenticationManager,
                         JwtTokenProvider jwtTokenProvider,
                         RefreshTokenStore refreshTokenStore,
+                        LoginAttemptLimiter loginAttemptLimiter,
                         ObjectMapper objectMapper) {
         this.authenticationManager = authenticationManager;
         this.jwtTokenProvider = jwtTokenProvider;
         this.refreshTokenStore = refreshTokenStore;
+        this.loginAttemptLimiter = loginAttemptLimiter;
         this.objectMapper = objectMapper;
 
         setFilterProcessesUrl("/user/login");
@@ -47,6 +51,10 @@ public class JwtLoginFilter extends UsernamePasswordAuthenticationFilter {
                             request.getInputStream(),
                             MemberLoginRequestDto.class
                     );
+
+            if (!loginAttemptLimiter.tryAcquire("login:" + dto.getAccountId())) {
+                throw new RateLimitExceededException("로그인 시도 횟수를 초과했습니다.");
+            }
 
             UsernamePasswordAuthenticationToken authenticationToken =
                     new UsernamePasswordAuthenticationToken(
@@ -95,13 +103,17 @@ public class JwtLoginFilter extends UsernamePasswordAuthenticationFilter {
                                     HttpServletResponse response,
                                             AuthenticationException failed ) throws IOException {
 
+        ErrorCode errorCode = (failed instanceof RateLimitExceededException)
+                ? ErrorCode.TOO_MANY_ATTEMPTS
+                : ErrorCode.LOGIN_FAILED;
+
         response.setContentType("application/json;charset=UTF-8");
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setStatus(errorCode.getStatus().value());
 
         response.getWriter().write(
                 objectMapper.writeValueAsString(
-                        ApiResponse.fail(ErrorCode.LOGIN_FAILED.getStatus().value(),
-                                ErrorCode.LOGIN_FAILED.getMessage()
+                        ApiResponse.fail(errorCode.getStatus().value(),
+                                errorCode.getMessage()
                         )
                 )
         );

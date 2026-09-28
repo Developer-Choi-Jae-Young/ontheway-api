@@ -21,9 +21,10 @@ public class CaffeineRefreshTokenStore implements RefreshTokenStore {
 
     @Override
     public void save(String accountId, String refreshToken) {
-        TokenRecord existing = refreshTokenCache.getIfPresent(accountId);
-        String previous = (existing != null) ? existing.currentToken() : null;
-        refreshTokenCache.put(accountId, new TokenRecord(refreshToken, previous, System.currentTimeMillis()));
+        refreshTokenCache.asMap().compute(accountId, (id, record) -> {
+            String previous = (record != null) ? record.currentToken() : null;
+            return new TokenRecord(refreshToken, previous, System.currentTimeMillis());
+        });
     }
 
     @Override
@@ -32,24 +33,35 @@ public class CaffeineRefreshTokenStore implements RefreshTokenStore {
     }
 
     @Override
-    public TokenValidationResult validate(String accountId, String refreshToken) {
-        TokenRecord record = refreshTokenCache.getIfPresent(accountId);
+    public RotationResult rotate(String accountId, String presentedRefreshToken, String candidateNewRefreshToken) {
+        TokenValidationResult[] status = new TokenValidationResult[1];
+        String[] effectiveToken = new String[1];
 
-        if (record == null) {
-            return TokenValidationResult.NOT_FOUND;
-        }
-        if (refreshToken.equals(record.currentToken())) {
-            return TokenValidationResult.VALID;
-        }
+        refreshTokenCache.asMap().compute(accountId, (id, record) -> {
+            if (record == null) {
+                status[0] = TokenValidationResult.NOT_FOUND;
+                return null;
+            }
+            if (presentedRefreshToken.equals(record.currentToken())) {
+                status[0] = TokenValidationResult.VALID;
+                effectiveToken[0] = candidateNewRefreshToken;
+                return new TokenRecord(candidateNewRefreshToken, record.currentToken(), System.currentTimeMillis());
+            }
 
-        boolean isPreviousToken = refreshToken.equals(record.previousToken());
-        boolean withinGracePeriod = (System.currentTimeMillis() - record.rotatedAtMillis()) <= GRACE_PERIOD_MILLIS;
+            boolean isPreviousToken = presentedRefreshToken.equals(record.previousToken());
+            boolean withinGracePeriod = (System.currentTimeMillis() - record.rotatedAtMillis()) <= GRACE_PERIOD_MILLIS;
 
-        if (isPreviousToken && withinGracePeriod) {
-            return TokenValidationResult.VALID_GRACE;
-        }
+            if (isPreviousToken && withinGracePeriod) {
+                status[0] = TokenValidationResult.VALID_GRACE;
+                effectiveToken[0] = record.currentToken(); // 이미 회전된 결과 재사용, 재회전하지 않음
+                return record; // 캐시 상태 변경 없음
+            }
 
-        return TokenValidationResult.REUSED; //탈취 의심
+            status[0] = TokenValidationResult.REUSED; //탈취 의심
+            return record;
+        });
+
+        return new RotationResult(status[0], effectiveToken[0]);
     }
 
     @Override
