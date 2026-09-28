@@ -3,6 +3,7 @@ package com.ontheway.global.exception;
 import com.ontheway.global.response.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
@@ -18,6 +19,18 @@ public class GlobalExceptionHandler {
         log.warn("BusinessException: {}", code.name());
         return ResponseEntity.status(code.getStatus())
                 .body(ApiResponse.fail(code.getStatus().value(), e.getMessage()));
+    }
+
+    // @Valid 검증 실패 (컨트롤러 DTO의 @NotNull, @Size 등)
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException e) {
+        String message = e.getBindingResult().getFieldErrors().stream()
+                .findFirst()
+                .map(fieldError -> fieldError.getField() + ": " + fieldError.getDefaultMessage())
+                .orElse(ErrorCode.INVALID_INPUT.getMessage());
+        log.warn("MethodArgumentNotValidException: {}", message);
+        return ResponseEntity.status(ErrorCode.INVALID_INPUT.getStatus())
+                .body(ApiResponse.fail(ErrorCode.INVALID_INPUT.getStatus().value(), message));
     }
 
     // 업로드 용량 초과(spring.servlet.multipart.max-file-size / max-request-size).

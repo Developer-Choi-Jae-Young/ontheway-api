@@ -12,6 +12,7 @@ import com.ontheway.global.exception.ErrorCode;
 import com.ontheway.repository.DeliveryOrderRepository;
 import com.ontheway.repository.ReviewRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
@@ -34,7 +35,7 @@ public class ReviewService {
 
     @Transactional
     public ReviewSaveResponseDto create(Long reviewerId, ReviewSaveRequestDto dto) {
-        DeliveryOrder order = deliveryOrderRepository.findByIdWithParties(dto.getBoardId())
+        DeliveryOrder order = deliveryOrderRepository.findByDeliveryIdWithParties(dto.getBoardId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
 
         if (!order.isCompleted()) {
@@ -65,7 +66,11 @@ public class ReviewService {
                 .rating(rating)
                 .content(dto.getContent())
                 .build();
-        reviewRepository.save(review);
+        try {
+            reviewRepository.save(review);
+        } catch (DataIntegrityViolationException e) {
+            throw new BusinessException(ErrorCode.DUPLICATE_REVIEW);
+        }
 
         return ReviewSaveResponseDto.builder()
                 .createdAt(LocalDateTime.now())
