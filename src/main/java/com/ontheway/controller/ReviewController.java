@@ -7,6 +7,7 @@ import com.ontheway.global.security.CustomUserDetails;
 import com.ontheway.service.ReviewService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -24,7 +25,7 @@ public class ReviewController {
     @PostMapping
     @Operation(summary = "후기 작성하기")
     public ApiResponse<?> create(@AuthenticationPrincipal CustomUserDetails userDetails,
-                                 @RequestBody ReviewSaveRequestDto dto) {
+                                 @RequestBody @Valid ReviewSaveRequestDto dto) {
         return ApiResponse.success(reviewService.create(userDetails.getUserId(), dto));
     }
 
