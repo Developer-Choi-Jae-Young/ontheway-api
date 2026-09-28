@@ -36,4 +36,12 @@ public class ReviewController {
         Pageable pageable = PageRequest.of(dto.getPage(), dto.getSize());
         return ApiResponse.success(reviewService.getMyReceivedReviews(userDetails.getUserId(), pageable));
     }
+
+    @GetMapping("/me/written")
+    @Operation(summary = "내가 작성한 후기 목록 조회")
+    public ApiResponse<?> written(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                  ReviewListRequestDto dto) {
+        Pageable pageable = PageRequest.of(dto.getPage(), dto.getSize());
+        return ApiResponse.success(reviewService.getMyWrittenReviews(userDetails.getUserId(), pageable));
+    }
 }
