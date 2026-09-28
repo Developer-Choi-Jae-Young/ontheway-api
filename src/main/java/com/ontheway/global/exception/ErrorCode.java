@@ -45,6 +45,7 @@ public enum ErrorCode {
     // 용량 숫자는 application.properties(spring.servlet.multipart.max-file-size) 한 곳에서만 정하므로 메시지에 적지 않는다
     INVALID_IMAGE(HttpStatus.BAD_REQUEST, "이미지 파일만, 허용 용량 이내로 등록할 수 있습니다."),
     IMAGE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "이미지 업로드에 실패했습니다."),
+    LOCATION_NOT_AVAILABLE(HttpStatus.NOT_FOUND, "전달자 위치 정보가 아직 없습니다."),
 
     // 물품 게시글. HTTP 상태는 명세에 없어 임의로 정한 값이다
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "물품 게시글을 찾지 못하였습니다."),

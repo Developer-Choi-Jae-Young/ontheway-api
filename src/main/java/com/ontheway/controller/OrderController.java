@@ -1,6 +1,9 @@
 package com.ontheway.controller;
 
+import com.ontheway.dto.request.LocationRequestDto;
+import com.ontheway.dto.request.LocationUpdateRequestDto;
 import com.ontheway.dto.request.ProcessRequestDto;
+import com.ontheway.dto.response.LocationResponseDto;
 import com.ontheway.dto.response.ProcessResponseDto;
 import com.ontheway.global.response.ApiResponse;
 import com.ontheway.global.security.CustomUserDetails;
@@ -34,5 +37,19 @@ public class OrderController {
                                                    @RequestPart ProcessRequestDto processRequestDto,
                                                    @RequestPart(required = false) MultipartFile image) {
         return ApiResponse.success(orderService.process(userDetails.getUserId(), processRequestDto, image));
+    }
+
+    @GetMapping("/location")
+    @Operation(summary = "전달자 GPS 위치 조회 (의뢰자 전용, 배송중 상태에서만 조회 가능)")
+    public ApiResponse<LocationResponseDto> location(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                                      LocationRequestDto locationRequestDto) {
+        return ApiResponse.success(orderService.getLocation(userDetails.getUserId(), locationRequestDto));
+    }
+
+    @PatchMapping("/location")
+    @Operation(summary = "전달자 GPS 위치 갱신 (전달자 전용, 배송중 상태에서만 갱신 가능)")
+    public ApiResponse<LocationResponseDto> updateLocation(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                                            @RequestBody LocationUpdateRequestDto locationUpdateRequestDto) {
+        return ApiResponse.success(orderService.updateLocation(userDetails.getUserId(), locationUpdateRequestDto));
     }
 }

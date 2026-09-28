@@ -1,6 +1,9 @@
 package com.ontheway.service;
 
+import com.ontheway.dto.request.LocationRequestDto;
+import com.ontheway.dto.request.LocationUpdateRequestDto;
 import com.ontheway.dto.request.ProcessRequestDto;
+import com.ontheway.dto.response.LocationResponseDto;
 import com.ontheway.dto.response.ProcessResponseDto;
 import com.ontheway.entity.Delivery;
 import com.ontheway.entity.DeliveryOrder;
@@ -12,6 +15,8 @@ import com.ontheway.entity.User;
 import com.ontheway.enums.DeliveryStatus;
 import com.ontheway.global.exception.BusinessException;
 import com.ontheway.global.exception.ErrorCode;
+import com.ontheway.global.util.CoordinateValidator;
+import com.ontheway.infra.cache.LocationStore;
 import com.ontheway.infra.storage.R2FileUploader;
 import com.ontheway.infra.storage.R2FileUploader.StoredFile;
 import com.ontheway.repository.DeliveryOrderRepository;
@@ -76,6 +81,10 @@ public class OrderService {
             "image/png", "png",
             "image/webp", "webp");
 
+    /** ProductService 의 좌표 검증과 같은 범위. 위경도 값이라 서로 독립적이라 여기 따로 둔다. */
+    private static final int MAX_LATITUDE = 90;
+    private static final int MAX_LONGITUDE = 180;
+
     /** 수락은 requestId 로 갈리므로 여기 없다. */
     private enum Intent {
         PICK_UP, CANCEL, FAIL, REQUEST_COMPLETION, CONFIRM
@@ -105,6 +114,7 @@ public class OrderService {
     private final ImageRepository imageRepository;
     private final R2FileUploader r2FileUploader;
     private final TransactionTemplate transactionTemplate;
+    private final LocationStore locationStore;
 
     public ProcessResponseDto process(Long userId, ProcessRequestDto dto, MultipartFile image) {
         require(dto != null && dto.getDeliveryId() != null, ErrorCode.INVALID_INPUT);
@@ -282,6 +292,57 @@ public class OrderService {
     private void confirm(DeliveryOrder order, boolean isRequester, LocalDateTime now) {
         require(isRequester, ErrorCode.FORBIDDEN);
         order.complete(now);
+    }
+
+    // --- GPS 위치 ---
+    // 배송중 상태일 때만 좌표를 주고받음
+    // 좌표는 DB가 아니라 캐시(LocationStore)에 두므로 경로 잠금이나 트랜잭션이 필요 없다.
+
+    /** 전달자가 자신의 현재 위치를 올린다. */
+    public LocationResponseDto updateLocation(Long userId, LocationUpdateRequestDto dto) {
+        require(dto != null && dto.getDeliveryId() != null
+                && dto.getLatitude() != null && dto.getLongitude() != null, ErrorCode.INVALID_INPUT);
+        require(CoordinateValidator.within(dto.getLatitude(), MAX_LATITUDE)
+                && CoordinateValidator.within(dto.getLongitude(), MAX_LONGITUDE), ErrorCode.INVALID_INPUT);
+
+        User user = userRepository.findByIdAndDeletedAtIsNull(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        DeliveryOrderRepository.OrderPartyStatusView view = deliveryOrderRepository
+                .findPartyStatusByDeliveryId(dto.getDeliveryId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_ORDER_STATE));
+
+        require(user.checkIsOwner(view.getDelivererId()), ErrorCode.FORBIDDEN);
+        require(view.getStatus() == DeliveryStatus.DELIVERING, ErrorCode.INVALID_ORDER_STATE);
+
+        LocalDateTime now = LocalDateTime.now();
+        locationStore.save(view.getOrderId(), dto.getLatitude(), dto.getLongitude(), now);
+        return LocationResponseDto.builder()
+                .latitude(dto.getLatitude())
+                .longitude(dto.getLongitude())
+                .updatedAt(now)
+                .build();
+    }
+
+    /** 의뢰자가 전달자의 현재 위치를 조회한다. */
+    public LocationResponseDto getLocation(Long userId, LocationRequestDto dto) {
+        require(dto != null && dto.getDeliveryId() != null, ErrorCode.INVALID_INPUT);
+
+        User user = userRepository.findByIdAndDeletedAtIsNull(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        DeliveryOrderRepository.OrderPartyStatusView view = deliveryOrderRepository
+                .findPartyStatusByDeliveryId(dto.getDeliveryId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_ORDER_STATE));
+
+        require(user.checkIsOwner(view.getRequesterId()), ErrorCode.FORBIDDEN);
+        require(view.getStatus() == DeliveryStatus.DELIVERING, ErrorCode.INVALID_ORDER_STATE);
+
+        LocationStore.Location location = locationStore.find(view.getOrderId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.LOCATION_NOT_AVAILABLE));
+        return LocationResponseDto.builder()
+                .latitude(location.latitude())
+                .longitude(location.longitude())
+                .updatedAt(location.updatedAt())
+                .build();
     }
 
     // --- 증빙 사진 ---
