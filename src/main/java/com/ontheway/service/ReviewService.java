@@ -3,6 +3,7 @@ package com.ontheway.service;
 import com.ontheway.dto.request.ReviewSaveRequestDto;
 import com.ontheway.dto.response.ReviewListResponseDto;
 import com.ontheway.dto.response.ReviewSaveResponseDto;
+import com.ontheway.dto.response.WrittenReviewListResponseDto;
 import com.ontheway.entity.DeliveryOrder;
 import com.ontheway.entity.Request;
 import com.ontheway.entity.Review;
@@ -106,6 +107,29 @@ public class ReviewService {
                 .toList();
 
         return ReviewListResponseDto.builder()
+                .reviewList(items)
+                .build();
+    }
+
+    // 내가 작성한 후기 목록
+    public WrittenReviewListResponseDto getMyWrittenReviews(Long userId, Pageable pageable) {
+        Slice<Review> reviews = reviewRepository.findByReviewerIdOrderByIdDesc(userId, pageable);
+
+        List<WrittenReviewListResponseDto.Review> items = reviews.getContent().stream()
+                .map(review -> {
+                    User target = review.getTarget();
+                    return WrittenReviewListResponseDto.Review.builder()
+                            .reviewId(review.getId())
+                            .reviewContent(review.getContent())
+                            .rating(review.getRating())
+                            .targetImage(target.getProfileImageUrl())
+                            .targetName(target.getName())
+                            .reviewDate(review.getCreatedAt())
+                            .build();
+                })
+                .toList();
+
+        return WrittenReviewListResponseDto.builder()
                 .reviewList(items)
                 .build();
     }
