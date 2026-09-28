@@ -9,6 +9,7 @@ import com.ontheway.infra.cache.RefreshTokenStore;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -26,17 +27,20 @@ public class JwtLoginFilter extends UsernamePasswordAuthenticationFilter {
     private final RefreshTokenStore refreshTokenStore;
     private final LoginAttemptLimiter loginAttemptLimiter;
     private final ObjectMapper objectMapper;
+    private final RefreshTokenCookieFactory refreshTokenCookieFactory;
 
     public JwtLoginFilter(AuthenticationManager authenticationManager,
                         JwtTokenProvider jwtTokenProvider,
                         RefreshTokenStore refreshTokenStore,
                         LoginAttemptLimiter loginAttemptLimiter,
-                        ObjectMapper objectMapper) {
+                        ObjectMapper objectMapper,
+                        RefreshTokenCookieFactory refreshTokenCookieFactory) {
         this.authenticationManager = authenticationManager;
         this.jwtTokenProvider = jwtTokenProvider;
         this.refreshTokenStore = refreshTokenStore;
         this.loginAttemptLimiter = loginAttemptLimiter;
         this.objectMapper = objectMapper;
+        this.refreshTokenCookieFactory = refreshTokenCookieFactory;
 
         setFilterProcessesUrl("/user/login");
     }
@@ -46,8 +50,7 @@ public class JwtLoginFilter extends UsernamePasswordAuthenticationFilter {
                                                 HttpServletResponse response) throws AuthenticationException {
 
         try {
-            MemberLoginRequestDto dto =
-                    objectMapper.readValue(
+            MemberLoginRequestDto dto = objectMapper.readValue(
                             request.getInputStream(),
                             MemberLoginRequestDto.class
                     );
@@ -81,6 +84,7 @@ public class JwtLoginFilter extends UsernamePasswordAuthenticationFilter {
         String refreshToken = jwtTokenProvider.createRefreshToken(accountId);
 
         refreshTokenStore.saveOnLogin(accountId, refreshToken);
+        setRefreshTokenCookie(response, refreshToken); // 필터 자동 갱신을 위해 쿠키로도 내려줌
 
         MemberLoginResponseDto result = MemberLoginResponseDto.builder()
                         .accessToken(accessToken)
@@ -117,5 +121,9 @@ public class JwtLoginFilter extends UsernamePasswordAuthenticationFilter {
                         )
                 )
         );
+    }
+
+    private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookieFactory.create(refreshToken).toString());
     }
 }

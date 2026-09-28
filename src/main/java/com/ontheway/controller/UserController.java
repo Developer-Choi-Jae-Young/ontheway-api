@@ -4,13 +4,16 @@ import com.ontheway.dto.request.*;
 import com.ontheway.dto.response.*;
 import com.ontheway.global.response.ApiResponse;
 import com.ontheway.global.security.CustomUserDetails;
+import com.ontheway.global.security.jwt.RefreshTokenCookieFactory;
 import com.ontheway.infra.storage.R2FileUploader;
 import com.ontheway.service.AuthService;
 import com.ontheway.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +30,7 @@ public class UserController {
     private final UserService userService;
     private final AuthService authService;
     private final R2FileUploader r2FileUploader;
+    private final RefreshTokenCookieFactory refreshTokenCookieFactory;
 
     @PostMapping("/signup")
     @Operation(summary = "회원가입")
@@ -73,21 +77,33 @@ public class UserController {
 
     @PostMapping("/reissue")
     @Operation(summary = "토큰 재발급")
-    public ApiResponse<MemberLoginResponseDto> reissue(@RequestBody @Valid TokenReissueRequestDto  dto) {
-        return ApiResponse.success(authService.reissue(dto));
+    public ApiResponse<MemberLoginResponseDto> reissue(@RequestBody @Valid TokenReissueRequestDto dto,
+                                                       HttpServletResponse response) {
+        MemberLoginResponseDto result = authService.reissue(dto);
+        setRefreshTokenCookie(response, result.getRefreshToken());
+        return ApiResponse.success(result);
     }
 
     @PostMapping("/refresh-token/renew")
     @Operation(summary = "refreshToken 갱신")
-    public ApiResponse<?> renewRefreshToken(@AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ApiResponse.success(authService.renewRefreshToken(userDetails.getAccountId()));
+    public ApiResponse<?> renewRefreshToken(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                            HttpServletResponse response) {
+        TokenRenewResponseDto result = authService.renewRefreshToken(userDetails.getAccountId());
+        setRefreshTokenCookie(response, result.getRefreshToken());
+        return ApiResponse.success(result);
     }
 
     @PostMapping("/logout")
     @Operation(summary = "로그아웃")
-    public ApiResponse<Void> logout(@AuthenticationPrincipal CustomUserDetails userDetails) {
+    public ApiResponse<Void> logout(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                    HttpServletResponse response) {
         authService.logout(userDetails.getAccountId());
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookieFactory.clear().toString());
         return ApiResponse.success(null);
+    }
+
+    private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookieFactory.create(refreshToken).toString());
     }
 
     @DeleteMapping("/account")
