@@ -15,6 +15,7 @@ import com.ontheway.entity.Product;
 import com.ontheway.entity.User;
 import com.ontheway.global.exception.BusinessException;
 import com.ontheway.global.exception.ErrorCode;
+import com.ontheway.global.util.CoordinateValidator;
 import com.ontheway.repository.DeliveryOrderRepository;
 import com.ontheway.repository.ProductRepository;
 import com.ontheway.repository.ProductSerialNumber;
@@ -247,12 +248,9 @@ public class ProductService {
         // 저장될 자릿수로 먼저 맞춘 뒤 범위를 본다. 수정에서 '변경 없음' 비교도 같은 자릿수로 해야 한다
         BigDecimal scaledLatitude = latitude.setScale(Product.COORDINATE_SCALE, RoundingMode.HALF_UP);
         BigDecimal scaledLongitude = longitude.setScale(Product.COORDINATE_SCALE, RoundingMode.HALF_UP);
-        require(within(scaledLatitude, MAX_LATITUDE) && within(scaledLongitude, MAX_LONGITUDE), ErrorCode.INVALID_INPUT);
+        require(CoordinateValidator.within(scaledLatitude, MAX_LATITUDE)
+                && CoordinateValidator.within(scaledLongitude, MAX_LONGITUDE), ErrorCode.INVALID_INPUT);
         return Location.builder().address(address).latitude(scaledLatitude).longitude(scaledLongitude).build();
-    }
-
-    private static boolean within(BigDecimal value, int limit) {
-        return value.abs().compareTo(BigDecimal.valueOf(limit)) <= 0;
     }
 
     /** 앞뒤 공백을 뗀 값을 돌려준다. 비어 있거나 상한을 넘으면 400. */

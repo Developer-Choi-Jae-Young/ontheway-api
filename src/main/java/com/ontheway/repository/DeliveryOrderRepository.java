@@ -83,6 +83,29 @@ public interface DeliveryOrderRepository extends JpaRepository<DeliveryOrder, Lo
             """)
     Optional<DeliveryOrder> findByDeliveryIdWithParties(@Param("deliveryId") Long deliveryId);
 
+    /**
+     * GPS 위치 폴링(updateLocation/getLocation) 전용. 소유권/상태 확인에만 쓰여서
+     * {@link #findByDeliveryIdWithParties} 처럼 Request/Product/Delivery 엔티티를 통째로
+     * 올릴 필요가 없다. author 는 FK 컬럼값이라 join 만으로 충분하고 user 테이블까지 갈 필요는 없다.
+     */
+    interface OrderPartyStatusView {
+        Long getOrderId();
+        DeliveryStatus getStatus();
+        Long getRequesterId();
+        Long getDelivererId();
+    }
+
+    @Query("""
+            select o.id as orderId, o.status as status,
+                   p.author.id as requesterId, d.author.id as delivererId
+              from DeliveryOrder o
+                join o.request rq
+                join rq.product p
+                join rq.delivery d
+             where rq.delivery.id = :deliveryId
+            """)
+    Optional<OrderPartyStatusView> findPartyStatusByDeliveryId(@Param("deliveryId") Long deliveryId);
+
     // --- 스케줄러 ---
     // 둘 다 엔티티를 읽어 바꾸지 않고 상태 조건을 건 UPDATE 하나로 처리한다. 스케줄러는 OrderService 가
     // 쥐는 경로 락을 쥐지 않는다. 읽고 나서 커밋하기까지 사이에 같은 건이 실패 처리되면 엔티티 방식은
