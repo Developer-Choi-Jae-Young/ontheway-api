@@ -66,6 +66,28 @@ public class RequestService {
                 .build();
     }
 
+    @Transactional
+    public void reject(Long delivererId, Long requestId) {
+        Request request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.REQUEST_NOT_FOUND));
+
+        Delivery delivery = deliveryRepository.findByIdForUpdate(request.getDelivery().getId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOT_FOUND));
+
+        if (!delivery.getAuthor().getId().equals(delivererId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+
+        if (!requestRepository.existsByIdAndRejectedAtIsNull(requestId)) {
+            throw new BusinessException(ErrorCode.REQUEST_CLOSED);
+        }
+        if (deliveryOrderRepository.findByRequestId(requestId).isPresent()) {
+            throw new BusinessException(ErrorCode.REQUEST_CLOSED);
+        }
+
+        request.reject(LocalDateTime.now());
+    }
+
     public RequestDeliveryListResponseDto getDeliveryRequestList(Long deliveryId, Long viewerId) {
         Delivery delivery = deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOT_FOUND));
