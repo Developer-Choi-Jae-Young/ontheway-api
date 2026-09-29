@@ -34,7 +34,9 @@ public class DeliveryService {
                 deliveryListRequestDto.getStartAddress(),
                 deliveryListRequestDto.getEndAddress(),
                 deliveryListRequestDto.getRating(),
-                deliveryListRequestDto.getHopePrice(),
+                deliveryListRequestDto.getMinHopePrice(),
+                deliveryListRequestDto.getMaxHopePrice(),
+                LocalDateTime.now(),
                 PageRequest.of(deliveryListRequestDto.getPage(), deliveryListRequestDto.getSize())
         );
 
@@ -58,7 +60,7 @@ public class DeliveryService {
                         .endAddress(delivery.getDestination().getAddress())
                         .deliveryDate(delivery.getDeliveryDate().atTime(delivery.getPlannedStartTime()))
                         .hopePrice(delivery.getDesiredPrice())
-                        .requestCount(requestRepository.countByDelivery(delivery))
+                        .requestCount(requestRepository.countByDeliveryAndRejectedAtIsNotNull(delivery))
                         .build())
                 .toList();
 
@@ -165,14 +167,14 @@ public class DeliveryService {
         User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("User not found"));
         List<MyBoardDeliveryListResponseDto.DeliveryList> deliveryList = deliveryRepository.findAllBySearchAuthorAndDeletedAt(user
                         , myBoardDeliveryListRequestDto.getStartAddress(), myBoardDeliveryListRequestDto.getEndAddress()
-                        , myBoardDeliveryListRequestDto.getRating(), myBoardDeliveryListRequestDto.getHopePrice()
+                        , myBoardDeliveryListRequestDto.getRating(), myBoardDeliveryListRequestDto.getMinHopePrice(), myBoardDeliveryListRequestDto.getMaxHopePrice()
                         , PageRequest.of(myBoardDeliveryListRequestDto.getPage(), myBoardDeliveryListRequestDto.getSize()))
                 .stream().map(item -> MyBoardDeliveryListResponseDto.DeliveryList.builder()
                         .deliveryId(item.getId())
                         .startAddress(item.getDeparture().getAddress())
                         .endAddress(item.getDestination().getAddress())
                         .hopePrice(item.getDesiredPrice())
-                        .requestCount(requestRepository.countByDelivery(item))
+                        .requestCount(requestRepository.countByDeliveryAndRejectedAtIsNotNull(item))
                         .deliveryDate(LocalDateTime.of(item.getDeliveryDate(), item.getPlannedStartTime())).build()).toList();
         return MyBoardDeliveryListResponseDto.builder().deliveryList(deliveryList).build();
     }

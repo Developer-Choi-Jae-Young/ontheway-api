@@ -11,8 +11,10 @@ public class DeliveryListRequestDto {
     private String startAddress;
     @Schema(description = "배송목적지")
     private String endAddress;
-    @Schema(description = "희망금액")
-    private Integer hopePrice;
+    @Schema(description = "최소 희망금액")
+    private Integer minHopePrice;
+    @Schema(description = "최대 희망금액")
+    private Integer maxHopePrice;
     @Schema(description = "페이지 번호")
     private int page;
     @Schema(description = "페이지당 항목수")
