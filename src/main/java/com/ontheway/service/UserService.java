@@ -51,6 +51,9 @@ public class UserService {
         if (userRepository.existsByAccountId(dto.getUserId())) {
             throw new BusinessException(ErrorCode.DUPLICATE_LOGIN_ID);
         }
+        if (userRepository.existsByEmailAndDeletedAtIsNull(dto.getEmail())) {
+            throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
+        }
         if (!codeStore.isVerified(verifyKey)) {
             throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
         }
@@ -143,7 +146,7 @@ public class UserService {
             if (!codeStore.isVerified(verifyKey)) {
                 throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
             }
-            if (userRepository.existsByEmail(dto.getNewEmail())) {
+            if (userRepository.existsByEmailAndDeletedAtIsNull(dto.getNewEmail())) {
                 throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
             }
 

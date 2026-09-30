@@ -29,8 +29,8 @@ import java.util.Objects;
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "`user`", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_user_account_id", columnNames = "account_id"),
-        @UniqueConstraint(name = "uk_user_email", columnNames = "email")
+        @UniqueConstraint(name = "uk_user_account_id", columnNames = "account_id")
+        // email은 탈퇴 계정을 뺀 활성 계정끼리만 중복 안 되면 됨(재가입 허용)
 })
 public class User extends BaseTimeEntity {
 
