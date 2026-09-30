@@ -86,6 +86,8 @@ public class RequestService {
             throw new BusinessException(ErrorCode.REQUEST_CLOSED);
         }
 
+        request.reject(LocalDateTime.now());
+
         return RequestRejectResponseDto.builder()
                 .rejectDate(LocalDateTime.now())
                 .build();
