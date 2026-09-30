@@ -13,6 +13,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -36,7 +37,7 @@ public class DeliveryService {
                 deliveryListRequestDto.getRating(),
                 deliveryListRequestDto.getMinHopePrice(),
                 deliveryListRequestDto.getMaxHopePrice(),
-                LocalDateTime.now(),
+                LocalDate.now(),
                 PageRequest.of(deliveryListRequestDto.getPage(), deliveryListRequestDto.getSize())
         );
 
