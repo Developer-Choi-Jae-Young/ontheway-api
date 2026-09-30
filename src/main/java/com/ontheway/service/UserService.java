@@ -204,4 +204,5 @@ public class UserService {
                 .reviewCount(reviewCount)
                 .build();
     }
+
 }
