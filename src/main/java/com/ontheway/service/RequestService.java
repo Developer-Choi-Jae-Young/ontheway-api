@@ -2,6 +2,7 @@ package com.ontheway.service;
 
 import com.ontheway.dto.request.RequestSaveRequestDto;
 import com.ontheway.dto.response.RequestDeliveryListResponseDto;
+import com.ontheway.dto.response.RequestRejectResponseDto;
 import com.ontheway.dto.response.RequestSaveResponseDto;
 import com.ontheway.entity.Delivery;
 import com.ontheway.entity.Product;
@@ -67,7 +68,7 @@ public class RequestService {
     }
 
     @Transactional
-    public void reject(Long delivererId, Long requestId) {
+    public RequestRejectResponseDto reject(Long delivererId, Long requestId) {
         Request request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.REQUEST_NOT_FOUND));
 
@@ -85,7 +86,9 @@ public class RequestService {
             throw new BusinessException(ErrorCode.REQUEST_CLOSED);
         }
 
-        request.reject(LocalDateTime.now());
+        return RequestRejectResponseDto.builder()
+                .rejectDate(LocalDateTime.now())
+                .build();
     }
 
     public RequestDeliveryListResponseDto getDeliveryRequestList(Long deliveryId, Long viewerId) {
