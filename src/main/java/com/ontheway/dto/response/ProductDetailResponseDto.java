@@ -22,6 +22,8 @@ public class ProductDetailResponseDto {
     private String userImage;
     @Schema(description = "사용자 이름")
     private String userName;
+    @Schema(description = "사용자 번호")
+    private Long userId;
     @Schema(description = "물품 수령지(주소)")
     private String productDeliveryAddress;
     // 수정 화면이 이 응답으로 폼을 채운다. 주소를 안 바꾸는 사용자도 수정 요청에 좌표를 실어야 해서 돌려준다
