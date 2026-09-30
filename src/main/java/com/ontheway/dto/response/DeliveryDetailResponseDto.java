@@ -71,6 +71,8 @@ public class DeliveryDetailResponseDto {
         private String userImage;
         @Schema(description = "사용자 이름")
         private String userName;
+        @Schema(description = "사용자 번호")
+        private Long userId;
         @Schema(description = "물품 수령지(주소)")
         private String productDeliveryAddress;
         @Schema(description = "배송 목적지")

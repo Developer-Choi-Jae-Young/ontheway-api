@@ -101,6 +101,7 @@ public class DeliveryService {
                                            .desiredDeliveryTime(firstOrder.getProduct().getDesiredArrivalTime())
                                            .userImage(firstOrder.getProduct().getAuthor().getProfileImageUrl())
                                            .userName(firstOrder.getProduct().getAuthor().getNickname())
+                                           .userId(firstOrder.getProduct().getAuthor().getId())
                                            .productDeliveryAddress(firstOrder.getProduct().getPickup().getAddress())
                                            .deliveryDestination(firstOrder.getProduct().getDestination().getAddress())
                                            .productInfo(firstOrder.getProduct().getItemInfo())
