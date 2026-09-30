@@ -140,7 +140,7 @@ public class ProductService {
                 .productId(product.getId())
                 .productName(product.getItemName())
                 .userImage(author.getProfileImageUrl())
-                .userName(author.getName())
+                .userName(author.getNickname())
                 .productDeliveryAddress(product.getPickup().getAddress())
                 .productDeliveryLatitude(product.getPickup().getLatitude())
                 .productDeliveryLongitude(product.getPickup().getLongitude())
