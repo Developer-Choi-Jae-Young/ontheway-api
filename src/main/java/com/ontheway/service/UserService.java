@@ -83,6 +83,7 @@ public class UserService {
         return MemberDetailResponseDto.builder()
                 .userId(user.getAccountId())
                 .email(user.getEmail())
+                .userImage(user.getProfileImageUrl())
                 .nickName(user.getNickname())
                 .birthday(String.valueOf(user.getBirthDate()))
                 .build();
