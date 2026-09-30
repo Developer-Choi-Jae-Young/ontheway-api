@@ -61,7 +61,7 @@ public class DeliveryService {
                         .endAddress(delivery.getDestination().getAddress())
                         .deliveryDate(delivery.getDeliveryDate().atTime(delivery.getPlannedStartTime()))
                         .hopePrice(delivery.getDesiredPrice())
-                        .requestCount(requestRepository.countByDeliveryAndRejectedAtIsNotNull(delivery))
+                        .requestCount(requestRepository.countByDeliveryAndRejectedAtIsNull(delivery))
                         .build())
                 .toList();
 
@@ -175,7 +175,7 @@ public class DeliveryService {
                         .startAddress(item.getDeparture().getAddress())
                         .endAddress(item.getDestination().getAddress())
                         .hopePrice(item.getDesiredPrice())
-                        .requestCount(requestRepository.countByDeliveryAndRejectedAtIsNotNull(item))
+                        .requestCount(requestRepository.countByDeliveryAndRejectedAtIsNull(item))
                         .deliveryDate(LocalDateTime.of(item.getDeliveryDate(), item.getPlannedStartTime())).build()).toList();
         return MyBoardDeliveryListResponseDto.builder().deliveryList(deliveryList).build();
     }

@@ -223,5 +223,5 @@ public interface RequestRepository extends JpaRepository<Request, Long> {
             """)
     int rejectByProduct(@Param("productId") Long productId, @Param("now") LocalDateTime now);
 
-    int countByDeliveryAndRejectedAtIsNotNull(Delivery delivery);
+    int countByDeliveryAndRejectedAtIsNull(Delivery delivery);
 }
