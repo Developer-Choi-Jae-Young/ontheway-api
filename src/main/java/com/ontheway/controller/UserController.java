@@ -119,4 +119,11 @@ public class UserController {
         return ApiResponse.success(userService.getRatings(userDetails.getUserId()));
     }
 
+
+    @GetMapping("/other/ratings")
+    @Operation(summary = "상대 후기 조회")
+    public ApiResponse<?> otherRatings(MemberLoginRequestDto dto) {
+        return ApiResponse.success(userService.getRatings(dto.getAccountId()));
+    }
+
 }
