@@ -49,7 +49,7 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long>, Deliv
             "AND (:rating IS NULL OR (SELECT COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.order.request.delivery.author = d.author) >= :rating) " +
             "AND d.deletedAt IS NULL " +
             "AND d.deliveryDate > :now " +
-            "ORDER BY d.deliveryDate DESC",
+            "ORDER BY d.deliveryDate ASC",
             countQuery = "SELECT COUNT(d) FROM Delivery d " +
                     "WHERE (:startAddress IS NULL OR d.departure.address LIKE %:startAddress%) " +
                     "AND (:endAddress IS NULL OR d.destination.address LIKE %:endAddress%) " +
