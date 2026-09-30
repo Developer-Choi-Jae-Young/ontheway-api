@@ -2,6 +2,8 @@ package com.ontheway.repository;
 
 import com.ontheway.entity.Delivery;
 import com.ontheway.entity.Request;
+import com.ontheway.entity.User;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -224,4 +226,6 @@ public interface RequestRepository extends JpaRepository<Request, Long> {
     int rejectByProduct(@Param("productId") Long productId, @Param("now") LocalDateTime now);
 
     int countByDeliveryAndRejectedAtIsNull(Delivery delivery);
+
+    Page<Request> findByProduct_Author(User user, Pageable pageable);
 }

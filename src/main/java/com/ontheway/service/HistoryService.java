@@ -4,6 +4,7 @@ import com.ontheway.dto.request.HistoryListRequestDto;
 import com.ontheway.dto.response.HistoryListResponseDto;
 import com.ontheway.entity.DeliveryOrder;
 import com.ontheway.entity.FailedAndCancelled;
+import com.ontheway.entity.Request;
 import com.ontheway.entity.User;
 import com.ontheway.enums.BoardType;
 import com.ontheway.enums.DeliveryStatus;
@@ -22,6 +23,7 @@ public class HistoryService {
     private final UserRepository userRepository;
     private final FailedAndCancelledRepository failedAndCancelledRepository;
     private final DeliveryOrderRepository deliveryOrderRepository;
+    private final RequestRepository requestRepository;
 
     public HistoryListResponseDto list(Long userId, HistoryListRequestDto historyListRequestDto) {
         User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("User not found"));
@@ -31,14 +33,13 @@ public class HistoryService {
                         List.of(DeliveryStatus.DELIVERY_WAITING, DeliveryStatus.PICKING_UP, DeliveryStatus.DELIVERING, DeliveryStatus.COMPLETION_REQUESTED, DeliveryStatus.COMPLETED),
                         PageRequest.of(historyListRequestDto.getPage(), historyListRequestDto.getSize()));
 
-        List<HistoryListResponseDto.HistoryList> historyList = deliveryToHistoryList(deliveryOrders);
+        List<HistoryListResponseDto.HistoryList> historyList = new ArrayList<>(deliveryToHistoryList(deliveryOrders));
 
-        Page<DeliveryOrder> requestDeliveryOrders =
-                deliveryOrderRepository.findByRequest_Product_AuthorAndStatusIn(user,
-                        List.of(DeliveryStatus.DELIVERY_WAITING, DeliveryStatus.PICKING_UP, DeliveryStatus.DELIVERING, DeliveryStatus.COMPLETION_REQUESTED, DeliveryStatus.COMPLETED),
-                        PageRequest.of(historyListRequestDto.getPage(), historyListRequestDto.getSize()));
+        Page<Request> requests = requestRepository.findByProduct_Author(user, PageRequest.of(historyListRequestDto.getPage(), historyListRequestDto.getSize()));
 
-        List<HistoryListResponseDto.HistoryList> requestHistoryList = requestToHistoryList(requestDeliveryOrders);
+        List<HistoryListResponseDto.HistoryList> requestHistoryList = requestToHistoryList(requests).stream()
+                .filter(item -> item.getDeliveryStatus() != DeliveryStatus.CANCELED && item.getDeliveryStatus() != DeliveryStatus.FAILED)
+                .toList();
 
         Page<FailedAndCancelled> failedAndCancelled = failedAndCancelledRepository.findByOrder_Request_Product_AuthorAndOrder_StatusIn(user,
                 List.of(DeliveryStatus.FAILED, DeliveryStatus.CANCELED),
@@ -66,12 +67,9 @@ public class HistoryService {
     public HistoryListResponseDto requestList(Long userId, HistoryListRequestDto historyListRequestDto) {
         User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        Page<DeliveryOrder> deliveryOrders =
-            deliveryOrderRepository.findByRequest_Product_AuthorAndStatusIn(user,
-                    List.of(DeliveryStatus.DELIVERY_WAITING, DeliveryStatus.PICKING_UP, DeliveryStatus.DELIVERING, DeliveryStatus.COMPLETION_REQUESTED, DeliveryStatus.COMPLETED),
-                    PageRequest.of(historyListRequestDto.getPage(), historyListRequestDto.getSize()));
+        Page<Request> requests = requestRepository.findByProduct_Author(user, PageRequest.of(historyListRequestDto.getPage(), historyListRequestDto.getSize()));
 
-        List<HistoryListResponseDto.HistoryList> historyList = requestToHistoryList(deliveryOrders);
+        List<HistoryListResponseDto.HistoryList> historyList = requestToHistoryList(requests);
         return HistoryListResponseDto.builder().historyList(historyList).build();
     }
 
@@ -109,16 +107,16 @@ public class HistoryService {
         ).getContent();
     }
 
-    private List<HistoryListResponseDto.HistoryList> requestToHistoryList(Page<DeliveryOrder> deliveryOrders) {
-        return deliveryOrders.map(deliveryOrder ->
+    private List<HistoryListResponseDto.HistoryList> requestToHistoryList(Page<Request> requests) {
+        return requests.map(request ->
                 HistoryListResponseDto.HistoryList.builder()
-                        .deliveryId(deliveryOrder.getDelivery().getId())
-                        .deliveryStatus(deliveryOrder.getStatus())
+                        .deliveryId(request.getDelivery().getId())
+                        .deliveryStatus(request.getStatus())
                         .boardType(BoardType.REQUEST)
-                        .startAddress(deliveryOrder.getDelivery().getDeparture().getAddress())
-                        .endAddress(deliveryOrder.getDelivery().getDestination().getAddress())
-                        .deliveryDate(deliveryOrder.getDelivery().getDeliveryDate().atTime(deliveryOrder.getDelivery().getPlannedStartTime()))
-                        .deliveryFee(deliveryOrder.getDeliveryFee())
+                        .startAddress(request.getDelivery().getDeparture().getAddress())
+                        .endAddress(request.getDelivery().getDestination().getAddress())
+                        .deliveryDate(request.getDelivery().getDeliveryDate().atTime(request.getDelivery().getPlannedStartTime()))
+                        .deliveryFee(request.getProduct().getDeliveryFee())
                         .build()
         ).getContent();
     }
