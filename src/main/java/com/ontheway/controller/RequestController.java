@@ -37,7 +37,6 @@ public class RequestController {
     @Operation(summary = "물품 의뢰 요청 거절하기")
     public ApiResponse<?> reject(@AuthenticationPrincipal CustomUserDetails userDetails,
                                  @PathVariable Long requestId) {
-        requestService.reject(userDetails.getUserId(), requestId);
-        return ApiResponse.success(null);
+        return ApiResponse.success(requestService.reject(userDetails.getUserId(), requestId));
     }
 }
