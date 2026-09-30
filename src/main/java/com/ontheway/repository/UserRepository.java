@@ -8,22 +8,24 @@ import java.util.Optional;
 /**
  * 사용자 조회. 메서드가 두 부류로 나뉘고, 탈퇴 계정을 거르는지가 다르다.
  *
- * 중복 검사는 탈퇴 계정까지 센다. UNIQUE 제약이 탈퇴한 행에도 그대로 걸려 있어서, 여기서
- * {@code deletedAt} 을 빼고 세면 "중복 아님"으로 통과시켜 놓고 INSERT 에서 터진다.
- * 결과적으로 탈퇴한 계정의 아이디와 이메일은 다시 못 쓴다.
+ * 아이디 중복 검사는 탈퇴 계정까지 센다. UNIQUE 제약(uk_user_account_id)이 탈퇴한 행에도
+ * 그대로 걸려 있어서, 여기서 {@code deletedAt} 을 빼고 세면 "중복 아님"으로 통과시켜 놓고
+ * INSERT 에서 터진다. 결과적으로 탈퇴한 계정의 아이디는 다시 못 쓴다.
+ * 이메일은 활성 계정끼리만 중복을 막는다.
  *
- * 사람을 찾는 조회는 반대로 전부 {@code deletedAt is null} 이 붙는다.
+ * 사람을 찾는 조회는 전부 {@code deletedAt is null} 이 붙는다.
  */
 public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByAccountId(String accountId);
 
-    // --- 중복 검사 (탈퇴 계정 포함) ---
+    // --- 중복 검사 ---
 
-    /** 아이디 중복 확인. */
+    /** 아이디 중복 확인. 탈퇴 계정 포함(재사용 불가). */
     boolean existsByAccountId(String accountId);
 
-    boolean existsByEmail(String email);
+    /** 이메일 중복 확인. 탈퇴 계정 제외(재가입 시 재사용 허용). */
+    boolean existsByEmailAndDeletedAtIsNull(String email);
 
     // --- 사람 찾기 (탈퇴 계정 제외) ---
 
