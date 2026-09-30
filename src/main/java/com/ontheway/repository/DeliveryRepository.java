@@ -48,7 +48,7 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long>, Deliv
             "AND (:maxHopePrice IS NULL OR d.desiredPrice <= :maxHopePrice) " +
             "AND (:rating IS NULL OR (SELECT COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.order.request.delivery.author = d.author) >= :rating) " +
             "AND d.deletedAt IS NULL " +
-            "AND d.deliveryDate > :now " +
+            "AND d.deliveryDate >= :now " +
             "ORDER BY d.deliveryDate ASC",
             countQuery = "SELECT COUNT(d) FROM Delivery d " +
                     "WHERE (:startAddress IS NULL OR d.departure.address LIKE %:startAddress%) " +
@@ -57,7 +57,7 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long>, Deliv
                     "AND (:maxHopePrice IS NULL OR d.desiredPrice <= :maxHopePrice) " +
                     "AND (:rating IS NULL OR (SELECT COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.order.request.delivery.author = d.author) >= :rating) " +
                     "AND d.deletedAt IS NULL " +
-                    "AND d.deliveryDate > :now ")
+                    "AND d.deliveryDate >= :now ")
     Page<Delivery> findAllBySearch(@Param("startAddress") String startAddress, @Param("endAddress") String endAddress, @Param("rating") Double rating, @Param("minHopePrice") Integer minHopePrice, @Param("maxHopePrice") Integer maxHopePrice, @Param("now") LocalDate now, Pageable pageable);
 
     @Query(value = "SELECT d FROM Delivery d " +
