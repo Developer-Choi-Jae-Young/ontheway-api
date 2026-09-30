@@ -205,11 +205,4 @@ public class UserService {
                 .build();
     }
 
-    //상대 평균 만족도 조회
-    public MemberRatingResponseDto getRatings(String accountId) {
-        User user = userRepository.findByAccountIdAndDeletedAtIsNull(accountId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-
-        return getRatings(user.getId());
-    }
 }
