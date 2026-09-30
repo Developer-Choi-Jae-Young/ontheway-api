@@ -101,7 +101,7 @@ public class ReviewService {
                         .reviewContent(review.getContent())
                         .rating(review.getRating())
                         .reviewerImage(review.getReviewer().getProfileImageUrl())
-                        .reviewerName(review.getReviewer().getName())
+                        .reviewerName(review.getReviewer().getNickname())
                         .reviewDate(review.getCreatedAt())
                         .build())
                 .toList();
@@ -123,7 +123,7 @@ public class ReviewService {
                             .reviewContent(review.getContent())
                             .rating(review.getRating())
                             .targetImage(target.getProfileImageUrl())
-                            .targetName(target.getName())
+                            .targetName(target.getNickname())
                             .reviewDate(review.getCreatedAt())
                             .build();
                 })
